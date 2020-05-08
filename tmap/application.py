@@ -17,6 +17,8 @@ from permutation import Permutation
 from topology import topology
 from tree import TreeIterator
 
+hostname = lambda: re.match('[a-zA-Z_\-]+', gethostname()).group()
+
 """
 Decorator that moves into the application directory while running the function.
 """
@@ -58,11 +60,15 @@ class Application:
     application is compiled.
     """
     def __init__(self):
+        try:
+            if not os.path.isdir(self.dir()):
+                raise ValueError('Application {} dir() {} is not a valid directory.'.format(self.name(), self.dir()))
+        except NotImplementedError:
+            pass
         self.binding = None
         try:
             basename = os.path.basename(self.dir())
-            self.path = os.getcwd() + os.path.sep + basename
-            self.path += '-{}'.format(gethostname())
+            self.path = '{}{}{}-{}'.format(os.getcwd(), os.path.sep, basename, hostname())
             if not os.path.isdir(self.path):
                 copytree(self.dir(), self.path)
                 self.setup()
@@ -116,8 +122,8 @@ class Application:
     def bind(self, topology_nodes: list):
         nodes = [ n for n in topology_nodes ]
         os.environ['OMP_NUM_THREADS'] = str(len(nodes))
-        self.binding = 'hwloc-thread-bind '
-        self.binding += ' '.join([ n.annotation['cpuset'] for n in nodes ])
+        self.binding = 'hwloc-thread-bind -l '
+        self.binding += ' '.join([ '{}:{}'.format(n.annotation['type'], n.annotation['logical_index']) for n in nodes ])
         self.binding += ' -- '
     
     """
@@ -180,9 +186,13 @@ class Application:
             out = subprocess.getoutput(' '.join(cmd))
         except Exception as e:
             print('Command line failed: {}'.format(cmd))
-            raise e        
-        with open(self.out_file, 'a') as f:
-            f.write(out)
+            raise e
+        try:
+            f = open(self.out_file, 'a')
+        except FileNotFoundError:
+            f = open(self.out_file, 'x')
+        f.write(out)
+        f.flush()
         seconds = self.get_timing()
         os.remove(self.out_file)
         return seconds
@@ -209,9 +219,11 @@ class Bash(Application):
                                  **kwargs)
     
     def get_timing(self):        
-        output = self.output()[0]
-        match = re.match('(?P<minutes>\d+):(?P<seconds>\d+).(?P<milliseconds>\d+)', output).groupdict()
-        return 60*float(match['minutes']) + float(match['seconds']) + 1e-2*float(match['milliseconds'])
+        regex = re.compile('(?P<minutes>\d+):(?P<seconds>\d+).(?P<milliseconds>\d+)')
+        for l in self.output():
+            match = regex.match(l)
+            if match is not None:
+                return 60*float(match['minutes']) + float(match['seconds']) + 1e-2*float(match['milliseconds'])
 
 """
 Class representing NAS parallel benchmarks applications
@@ -240,11 +252,11 @@ class NAS(Application):
     
     def get_timing(self):
         output = self.output()
-        regex = re.compile('[\s]+Time[\s]+in[\s]+seconds[\s]+[=][\s]+(?P<seconds>[\d]+[.][\d]+)')
+        regex = re.compile('[\s]*Time[\s]+in[\s]+seconds[\s]+[=][\s]+(?P<seconds>[\d]+[.][\d]+)')
         for l in output:
             match = regex.match(l)
             if match is not None:
-                return float(match['seconds'])    
+                return float(match.groupdict()['seconds'])    
 
 applications = { 'NAS': NAS(), 'sleep': Bash('sleep'), 'echo': Bash('echo') }
 
@@ -252,8 +264,8 @@ __all__ = [ 'Application', 'applications' ]
 
 if __name__ == '__main__':
     echo = Bash('echo')
-    echo.run('-n', 'toto')
+    print('echo -n toto: {}'.format(echo.run('-n', 'toto')))
     sleep = Bash('sleep')
-    sleep.run('1.2')
+    print('sleep 1.2: {}'.format(sleep.run('1.2')))
     nas = NAS()
-    nas.run('cg')
+    print('NAS cg: {}'.format(nas.run('cg')))

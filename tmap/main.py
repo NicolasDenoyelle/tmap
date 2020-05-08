@@ -10,8 +10,8 @@
 import os
 import re
 import sys
-from socket import gethostname
 from random import randrange
+from socket import gethostname
 from application import Application, applications
 from topology import Topology, topology
 from permutation import Permutation, TreePermutation
@@ -19,12 +19,12 @@ from tree import TreeIterator
 
 def args_str(*args, **kwargs):
     fmt = re.compile('\w+')
-    
-    out = ''
+
+    args_list=[]
     for arg in args:
         if fmt.match(str(arg)) is None:
             raise ValueError('arg: "{!s}" error. Expected arg format: [0-9a-zA-Z_]'.format(str(arg)))
-        out += ':{!s}'.format(arg)
+        args_list.append('{!s}'.format(arg))
         
     for k,v in kwargs.items():
         k = str(k)
@@ -34,15 +34,15 @@ def args_str(*args, **kwargs):
             if fmt.match(v) is None:
                 raise ValueError('kwarg: {} error. Expected arg format: [0-9a-zA-Z_]'.format(v))
             if len(k) == 1:
-                out.append(':-{!s}={!s}'.format(k,v))
+                args_list.append('-{!s}={!s}'.format(k,v))
             else:
-                out.append(':--{!s}={!s}'.format(k,v))
+                args_list.append('--{!s}={!s}'.format(k,v))
         else:
             if len(k) == 1:
-                out += ':-{}'.format(k)
+                args_list.append('-{}'.format(k))
             else:
-                out += ':--{}'.format(k)
-    return out
+                args_list.append('--{}'.format(k))
+    return ':'.join(args_list)
     
 def run(app: Application, binding, *args, **kwargs):
     if isinstance(binding, list):
@@ -62,7 +62,7 @@ def run(app: Application, binding, *args, **kwargs):
     seconds = app.run(*args, **kwargs)    
     sargs = args_str(*args, **kwargs)
     output = '"{!s}" "{!s}" {} "{}" {}'.format(binding, canonical,
-                                               app.name(), args_str(*args, **kwargs),
+                                               app.name(), sargs,
                                                seconds)
     print(output)
     return output
@@ -109,38 +109,46 @@ def read_permutations(file):
     return perms
 
 class Case:
-    permutation_file = gethostname() + '-permutations.txt'
-    
-    def __init__(self, app: Application, *args, **kwargs):
+    def __init__(self, app: Application, *args, hostname=gethostname(), **kwargs):
+        hostname = re.match('[a-zA-Z_\-]+', hostname).group()
+        basename = os.path.basename(app.dir())
+        args_id = args_str(*args, **kwargs)
         self.application = app
         self.app_args = args
         self.app_kwargs = kwargs
-        self.output_file = app.path + os.path.sep + 'results.txt'
-    
-    def update_permutations(self):
-        if not os.path.isfile(Case.permutation_file):
-            raise Exception('Permutation file "{}" has to be generated.'.format(Case.permutation_file))
+        self.permutation_file = hostname + '-permutations.txt'        
+        self.output_file = '{}{}{}-{}{}{}-results.txt'.format(os.getcwd(),
+                                                              os.path.sep,
+                                                              basename,
+                                                              hostname,
+                                                              os.path.sep,
+                                                              args_id)
 
-        self.permutations = read_permutations(Case.permutation_file)
+        if not os.path.isfile(self.permutation_file):
+            gen_permutations(100, 100, self.permutation_file)
+    
+    def remaining_permutations(self):
+        permutations = read_permutations(self.permutation_file)
         try:
             f = open(self.output_file, 'r')
             for line in f.readlines():
                 p = Permutation(line.split()[0].strip('"'))
                 try:
-                    self.permutations[p] -= 1
-                    if self.permutations[p] <= 0:
-                        del(self.permutations[p])
+                    permutations[p] -= 1
+                    if permutations[p] <= 0:
+                        del(permutations[p])
                 except KeyError:
                     pass
         except FileNotFoundError:
             pass
+        return permutations
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        self.update_permutations()
-        keys = self.permutations.keys()
+        permutations = self.remaining_permutations()
+        keys = permutations.keys()
         n = len(keys)
         if n == 0:
             raise StopIteration
@@ -148,36 +156,52 @@ class Case:
         for i in range(randrange(n)):
             k = next(keys)
         out = run(self.application, k, *self.app_args, **self.app_kwargs)
-        with open(self.output_file, 'a') as f:
-            f.write(out + '\n')
+        try:
+            f = open(self.output_file, 'a')
+        except FileNotFoundError:
+            f = open(self.output_file, 'x')
+        f.write(out + '\n')
+        f.flush()
 
 if __name__ == '__main__':
     bin = sys.argv[0]
     sys.argv = sys.argv[1:]
     apps = applications.keys()
-    actions = [ 'gen', 'run' ]
+    actions = [ 'rem', 'run' ]
     action = 'run'
-    num_canonical = 10
-    num_symmetrics = 10
-    cases = [
-        [ 'NAS', [ 'cg' ], {} ],
-        [ 'NAS', [ 'dc' ], {} ],
-        [ 'NAS', [ 'cg' ], {} ],
-        [ 'NAS', [ 'ep' ], {} ],
-        [ 'NAS', [ 'ft' ], {} ],
-        [ 'NAS', [ 'is' ], {} ],
-        [ 'NAS', [ 'lu' ], {} ],
-        [ 'NAS', [ 'mg' ], {} ],
-        [ 'NAS', [ 'sp' ], {} ],
-        [ 'NAS', [ 'ua' ], {} ],
-    ]
+    num_canonical = 100
+    num_symmetrics = 100
+    
+    cases = {
+        'NAS':  [
+            ([ 'cg' ], {}), 
+            ([ 'dc' ], {}),
+            ([ 'cg' ], {}),
+            ([ 'ep' ], {}),
+            ([ 'ft' ], {}),
+            ([ 'is' ], {}),
+            ([ 'lu' ], {}),
+            ([ 'mg' ], {}),
+            ([ 'sp' ], {}),
+            ([ 'ua' ], {})
+        ]
+    }
+
+    def remaining(hostname, _cases = cases):
+        tot = 0
+        for k,v in _cases.items():
+            app = applications[k]
+            for args, kwargs in v:
+                kwargs['hostname'] = hostname
+                case = Case(app, *args, **kwargs)
+                permutations = case.remaining_permutations()
+                tot += sum(permutations.values())
+        return tot
     
     def usage():
         print('{} <action> (action_args ...)\n'.format(bin))
         print('ACTIONS:\n')
-        print("""\t gen (<num_canonical> <num_symmetrics>): generate 
-        permutation file with num_canonical permutations and num_symmetrics 
-        permutations per canonical permutation""")
+        print("""\t rem (hostname) (): print the number of remaining cases.""")
         print("""\t run (<app>) (<args> ...): run all applications. If a specific 
         permutation file with num_canonical permutations and num_symmetrics 
         permutations per canonical permutation""")
@@ -194,24 +218,27 @@ if __name__ == '__main__':
             usage()
             sys.exit(1)
     action = sys.argv[0]
-    
-    if action == 'gen':
-        if len(sys.argv) >= 3:
-            num_canonical = int(sys.argv[1])
-            num_symmetrics = int(sys.argv[2])
-        gen_permutations(num_canonical, num_symmetrics, Case.permutation_file)
-        sys.exit(0)
 
+    if action == 'rem':
+        hostname = sys.argv[1] if len(sys.argv) > 1 else gethostname()
+        print(remaining(hostname))
+        sys.exit(0)
+    
     if action == 'run':
         if len(sys.argv) <= 1:
-            for c in cases:                
-                next(iter(Case(applications[c[0]], *list(c[1]), **c[2])))
+            for k,v in cases.items():
+                app = applications[k]
+                for args, kwargs in v:
+                    case = Case(app, *args, **kwargs)
+                    for i in iter(case):
+                        pass
             sys.exit(0)
         if len(sys.argv) > 1:
-            args = []
-            app = sys.argv[1]
-            if app not in apps:
-                raise ValueError('app must be one of {!s}'.format(apps))
-        if len(sys.argv) > 2:
-            args = sys.argv[2:]
-            next(iter(Case(applications[app], *list(args))))
+            app = applications[sys.argv[1]]
+            _cases = cases[sys.argv[1]]
+            if len(sys.argv) > 2:
+                _cases = [ (sys.argv[2:], {}) ]
+            for args, kwargs in _cases:
+                case = Case(app, *args, **kwargs)
+                for i in iter(case):
+                    pass
