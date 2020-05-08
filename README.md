@@ -30,7 +30,7 @@ print(s) # 5:3:4:1:0:2
 Permutation(len(s), s.id()) == s
 ```
 
-*permutation is iterable and deref:
+* permutation is iterable and deref:
 ```
 print(':'.join([ str(i) for i in s])) # 5:3:4:1:0:2
 print(s[0]) # 5
