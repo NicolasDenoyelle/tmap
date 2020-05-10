@@ -77,7 +77,6 @@ class Application:
         time = str(datetime.now())
         time = re.sub('\s', '-', time)
         self.out_file = self.path + os.path.sep + 'run-{}.out'.format(time)
-        self.bind(TreeIterator(topology, lambda n: n.is_leaf()))
         
     """
     Return application name represented by this class.
@@ -121,7 +120,6 @@ class Application:
     """
     def bind(self, topology_nodes: list):
         nodes = [ n for n in topology_nodes ]
-        os.environ['OMP_NUM_THREADS'] = str(len(nodes))
         self.binding = 'hwloc-thread-bind -l '
         self.binding += ' '.join([ '{}:{}'.format(n.annotation['type'], n.annotation['logical_index']) for n in nodes ])
         self.binding += ' -- '
@@ -225,10 +223,19 @@ class Bash(Application):
             if match is not None:
                 return 60*float(match['minutes']) + float(match['seconds']) + 1e-2*float(match['milliseconds'])
 
+
+class OpenMP(Application):
+    def bind(self, topology_nodes: list):
+        pus = [ Topology.get_children(n.annotation['type'],
+                                      n.annotation['logical_index'],
+                                      'PU')[0] for n in topology_nodes ]
+        os.environ['OMP_NUM_THREADS'] = str(len(pus))
+        os.environ['OMP_PLACES'] = ','.join([ str(pu['os_index']) for pu in pus ])
+
 """
 Class representing NAS parallel benchmarks applications
 """
-class NAS(Application):
+class NAS(OpenMP):
     def __init__(self, _class = 'B'):
         self._class = _class
         super().__init__()
