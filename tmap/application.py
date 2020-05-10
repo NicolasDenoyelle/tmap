@@ -14,7 +14,7 @@ from datetime import datetime
 from shutil import copytree, rmtree
 from socket import gethostname
 from permutation import Permutation
-from topology import topology
+from topology import Topology
 from tree import TreeIterator
 
 hostname = lambda: re.match('[a-zA-Z_\-]+', gethostname()).group()
