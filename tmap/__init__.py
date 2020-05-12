@@ -20,6 +20,8 @@ all = [
     'ScatterTreeIterator',
     'Permutation',
     'TreePermutation'
+    'PermutationIterator',
+    'CanonicalPermutationIterator'
 ]
 
 s, _ = subprocess.getstatusoutput('hwloc-info')

@@ -81,8 +81,9 @@ p = TreePermutation(tree, Permutation([0,1,3,2,4,5]).id())
 print(p.canonical()) # 0:1:3:2:4:5
 ```
 
-* A canonical representation has multiple equivalents.
-An equivalent is obtain by shuffling tree nodes.
+* A canonical permutation is a unique permutation of a subgroup.
+Other permutations of the same subgroup can be randomly generated
+by shuffling tree nodes.
 
 ```
 equi = p.shuffled_equivalent()
@@ -91,10 +92,17 @@ print(equi.canonical() == p) # True
 ```
 
 ### Map a permutation with this machine topology
-This part will only be available if hwloc is installed on the system.
+* This part will only be available if hwloc is installed on the system.
 
 ```
 from tmap import Topology
 t = Topology()
 p = TreePermutation(t)
+```
+
+### Enumerate permutation one per subgroup of tree permutation:
+```
+from tmap import CanonicalPermutationIterator
+for permutation in CanonicalPermutationIterator(p):
+		print(permutation)
 ```
