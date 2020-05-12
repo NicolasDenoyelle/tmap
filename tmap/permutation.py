@@ -104,11 +104,8 @@ class Permutation:
     def __add__(self, p: Permutation):
         if len(p) != len(self):
             raise ValueError('Cannot add permutations of different length.')
-        perm = Permutation(self)
-        perm.elements = [ perm.elements[i] for i in p ]
-        return perm
+        return Permutation(len(self), self.id() + p.id())    
     
-        
     """
     Shuffle permutation elements.
     """
