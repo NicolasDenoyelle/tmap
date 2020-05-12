@@ -7,11 +7,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
 ##############################################################################
 
-from random import shuffle
+from random import shuffle, randrange
 from tree import Tree, Tleaf, TreeIterator
 
 isindex = lambda l: next((False for i in range(len(l)) if i not in l), True)
 which = lambda x, l: next((y[0] for y in zip(range(len(l)), l) if y[1] == x), None)
+factorial = lambda n: n if n == 1 else n * factorial(n-1)
 
 """
 Class representing a complete list of positive integers.
@@ -36,6 +37,9 @@ class Permutation:
                 elements.append(slots[s])
                 slots = [ s for s in slots if s != elements[-1] ]
             self.elements = elements + slots
+            return
+        if isinstance(n, Permutation):
+            self.elements = n.elements.copy()
             return
         if isinstance(n, str):
             n = [ int(i) for i in n.split(':') ]
@@ -92,6 +96,18 @@ class Permutation:
             return self.elements == other
         if isinstance(other, Permutation):
             return self.elements == other.elements
+
+    """
+    Associative composition law.
+    Neutral: Permutation(n, 0)    
+    """
+    def __add__(self, p: Permutation):
+        if len(p) != len(self):
+            raise ValueError('Cannot add permutations of different length.')
+        perm = Permutation(self)
+        perm.elements = [ perm.elements[i] for i in p ]
+        return perm
+    
         
     """
     Shuffle permutation elements.
@@ -100,6 +116,26 @@ class Permutation:
         ret = Permutation(len(self))
         shuffle(ret.elements)
         return ret
+
+"""
+Iterator of all permutation of a set of nelements.
+"""
+class PermutationIterator:
+    def __init__(self, n):
+        permutation = Permutation(n)
+        self.id = permutation.id()
+        self.n  = len(permutation)
+        self.max_perm = factorial(self.n)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.id >= self.max_perm:
+            raise StopIteration
+        perm = Permutation(self.n, self.id)
+        self.id += 1
+        return perm
 
 """
 A Permutation mapped on a Tree where tree leaves are permutation elements.
@@ -159,16 +195,40 @@ class TreePermutation(Permutation):
             node.swap(ord)
         ret.elements = [ self.elements[i.tag] for i in TreeIterator(ret.tree, lambda n: n.is_leaf()) ]
         return ret
+
+"""
+Iterator of all canonical permutations of a set of nelements mapped with a tree.
+"""
+class CanonicalPermutationIterator:
+    def __init__(self, p: TreePermutation):
+        self.tree = p.tree
+        self.it = PermutationIterator(p)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        p = TreePermutation(self.tree, next(self.it).id())
+        while p != p.canonical():
+            p = TreePermutation(self.tree, next(self.it).id())
+        return p
     
 ################################################################################
 
-__all__ = [ 'Permutation', 'TreePermutation' ]
+__all__ = [ 'Permutation',
+            'TreePermutation',
+            'PermutationIterator',
+            'CanonicalPermutationIterator' ]
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     p = TreePermutation(Tleaf([2, 4, 2]))
-    print(p)
-    print(p.shuffled())
-    print(p.shuffled_equivalent())
-    print(p.shuffled_equivalent().canonical() == p.shuffled_equivalent().canonical())
-    id = 18976
-    print(Permutation(16,id).id() == id)
+    p = p.shuffled()
+    print('Canonical(tree permuted) is canonical: {}'.\
+          format(p.shuffled_equivalent().canonical().isCanonical()))
+    n = 16
+    id = randrange(n)
+    print('Computed id is provided id: {}'.format(Permutation(16,id).id() == id))
+    print('Neutral is neutral: {}'.format(p == p + Permutation(len(p), 0)))
+    p = CanonicalPermutationIterator(TreePermutation(Tleaf([2,2])))
+    print('Canonical iterator yields canonicals: {}'.\
+          format(all([i.isCanonical() for i in it])))
