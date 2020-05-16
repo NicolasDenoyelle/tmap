@@ -58,7 +58,7 @@ def run(app: Application, binding, *args, **kwargs):
     canonical = binding.canonical()
     CUs = [ n for n in TreeIterator(topology, lambda n: n.is_leaf()) ]
     CUs = [ CUs[i] for i in binding ]
-    app.bind(CUs)
+    app.bind([ CUs[i] for i in range(topology.get_nbobjs_by_type('Core')) ])
     seconds = app.run(*args, **kwargs)    
     sargs = args_str(*args, **kwargs)
     output = '"{!s}" "{!s}" {} "{}" {}'.format(binding, canonical,
