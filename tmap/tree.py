@@ -101,7 +101,7 @@ class Tree:
             return self.children[coords[0]]
         else:
             return self.children[coords[0]][coords[1:]]
-        
+    
     """
     Get the coordinate of this node.
     """
@@ -171,7 +171,13 @@ class Tree:
             return self
         else:
             return fn([ n.reduce(fn) for n in self.children ])
-
+    
+    """
+    Walk all nodes of the tree and return nodes satisfying cond.
+    """
+    def select(self, cond = lambda n: True):
+        return [ n for n in self if cond(n) ]
+        
     """
     Return the right-most leaf of the tree.
     """
