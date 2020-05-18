@@ -78,18 +78,15 @@ def gen_permutations(num_canonical = 100, num_symmetrics = 100, output_file=None
         for i in range(num_symmetrics):
             z = symmetric.shuffled_equivalent()
             z = tuple([ x.logical_index for x in symmetric.tree if x.is_leaf() ])
-            while z in local:
+            while z in local or z == y:
                 z = symmetric.shuffled_equivalent()
                 z = tuple([ x.logical_index for x in symmetric.tree if x.is_leaf() ])
             ret[z] = (y, 1)
             
-    for z, x in ret.items():
-        y = x[0]
-        n = x[1]
+    for z, (y, n) in ret.items():
         sy = ':'.join([str(i) for i in y])
         sz = ':'.join([str(i) for i in z])
-        print('{} {} {}\n'.format(sy, sz, 1))
-        out.write('{} {} {}\n'.format(sy, sz, 1))
+        out.write('{} {} {}\n'.format(sz, sy, n))
         
     return ret
 
@@ -193,7 +190,7 @@ if __name__ == '__main__':
             for args in v:
                 case = Case(app, *args, hostname=hostname)
                 permutations = case.remaining_permutations()
-                tot += sum(permutations.values())
+                tot += sum([ n for _, n in permutations.values() ])
         return tot
 
     def parse_cases(args):
