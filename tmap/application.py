@@ -121,7 +121,7 @@ class Application:
     def bind(self, topology_nodes: list):
         nodes = [ n for n in topology_nodes ]
         self.binding = 'hwloc-thread-bind -l '
-        self.binding += ' '.join([ '{}:{}'.format(n.annotation['type'], n.annotation['logical_index']) for n in nodes ])
+        self.binding += ' '.join([ '{}:{}'.format(n.type, n.logical_index) for n in nodes ])
         self.binding += ' -- '
     
     """
@@ -226,8 +226,8 @@ class Bash(Application):
 
 class OpenMP(Application):
     def bind(self, topology_nodes: list):
-        pus = [ Topology.get_children(n.annotation['type'],
-                                      n.annotation['logical_index'],
+        pus = [ Topology.get_children(n.type,
+                                      n.logical_index,
                                       'PU')[0] for n in topology_nodes ]
         os.environ['OMP_NUM_THREADS'] = str(len(pus))
         os.environ['OMP_PLACES'] = ','.join([ str(pu['os_index']) for pu in pus ])
