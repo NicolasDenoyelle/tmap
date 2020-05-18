@@ -102,11 +102,15 @@ class Tree:
         if self.parent is None:
             return 0
         return 1 + self.parent.depth()
-
+    
+    "Return node arity"
+    def arity(self):
+        return len(self.children)
+    
     "Compute recursively maximum distance to a leaf from this node"
     def max_depth(self) -> int:
         return max([ l.depth() for l in TreeIterator(self, lambda n: n.is_leaf()) ])
-
+    
     """
     Retrieve a descendant node by its relative coordinates to this node.
     @coord is a list of int. It does not includes this node coord: 0.
@@ -235,10 +239,6 @@ class Tree:
         for e in eliminated:
             if e.parent is not None:
                 e.parent.children = [ c for c in e.parent.children if c != e ]
-                e.parent = None
-            for c in e.children:
-                c.parent = None
-            e.children = []
         return eliminated
 
 """
