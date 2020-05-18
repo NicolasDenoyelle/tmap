@@ -101,7 +101,7 @@ class Permutation:
     Associative composition law.
     Neutral: Permutation(n, 0)    
     """
-    def __add__(self, p: Permutation):
+    def __add__(self, p):
         if len(p) != len(self):
             raise ValueError('Cannot add permutations of different length.')
         return Permutation(len(self), self.id() + p.id())    
