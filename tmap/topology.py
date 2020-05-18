@@ -166,8 +166,6 @@ class Topology(Tree):
         return len(self.select(lambda n: n.type == type))
     
     def restrict(self, indexes: list, type: str):
-        print('next {}:{}'.format(type, indexes))
-        
         # Prune nodes in index.
         eliminated = self.prune(lambda n: n.type == type and
                                 n.logical_index not in indexes)
@@ -177,6 +175,7 @@ class Topology(Tree):
             next_indexes = [ n.logical_index for n in self
                              if n.type == next_type and n not in elimination ]
             return self.restrict(next_indexes, next_type)
+        return self
 
 "Pre initialized current machine topology."
 topology = Topology()
