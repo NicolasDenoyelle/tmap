@@ -230,7 +230,7 @@ class OpenMP(Application):
                                       n.logical_index,
                                       'PU')[0] for n in topology_nodes ]
         os.environ['OMP_NUM_THREADS'] = str(len(pus))
-        os.environ['OMP_PLACES'] = ','.join([ str(pu['os_index']) for pu in pus ])
+        os.environ['OMP_PLACES'] = ','.join([ str(pu.os_index) for pu in pus ])
 
 """
 Class representing NAS parallel benchmarks applications

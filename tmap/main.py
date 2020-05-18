@@ -10,6 +10,7 @@
 import os
 import re
 import sys
+from copy import deepcopy
 from random import randrange
 from socket import gethostname
 from application import Application, applications
@@ -44,58 +45,53 @@ def args_str(*args, **kwargs):
                 args_list.append('--{}'.format(k))
     return ':'.join(args_list)
     
-def run(app: Application, binding, *args, **kwargs):
-    if isinstance(binding, list):
-        binding = Permutation(binding)
-    if isinstance(binding, Permutation):
-        binding = TreePermutation(Topology(), binding.id())
-    elif isinstance(binding, int):
-        binding = TreePermutation(Topology(), binding)
-        
-    if not isinstance(binding, TreePermutation):
-        raise ValueError('binding must be either: a permutation id, an index, a Permutation or a TreePermutation')
-        
-    canonical = binding.canonical()
-    CUs = [ n for n in TreeIterator(topology, lambda n: n.is_leaf()) ]
-    CUs = [ CUs[i] for i in binding ]
-    app.bind([ CUs[i] for i in range(topology.get_nbobjs_by_type('Core')) ])
-    seconds = app.run(*args, **kwargs)    
+def run(app: Application, symmetric, canonical, *args, **kwargs):
+    PUs = [ n for n in topology if n.type == 'PU' and n.logical_index in symmetric ]
+    app.bind(PUs)
+    seconds = app.run(*args, **kwargs)
     sargs = args_str(*args, **kwargs)
-    output = '"{!s}" "{!s}" {} "{}" {}'.format(binding, canonical,
-                                               app.name(), sargs,
-                                               seconds)
+    sy = ':'.join([str(i) for i in symmetric])
+    sz = ':'.join([str(i) for i in canonical])
+    output = '"{}" "{}" {} "{}" {}'.format(sy, sz, app.name(), sargs, seconds)
     print(output)
     return output
 
 def gen_permutations(num_canonical = 100, num_symmetrics = 100, output_file=None):
     if output_file is not None:
         out = open(output_file, 'w')
-    permutation = TreePermutation(Topology())
-    canonicals = {}
+    ret = {}
+    
+    num_cores = topology.get_nbobjs_by_type('Core')
+    
+    # Class for computing canonical permutations
+    canonical = TreePermutation(Topology())
+
+    canonicals = set()
     for i in range(num_canonical):
-        y = permutation.shuffled()
-        while y in canonicals.keys():
-            y = permutation.shuffled()
-        canonicals[y] = num_symmetrics
-        if output_file is not None:
-            out.write(str(y) + ' {}\n'.format(num_symmetrics))
-        
-    symmetrics = {}
-    for y in canonicals.keys():
-        local_sym = {}
+        y = tuple(canonical.shuffled().canonical()[0:num_cores])
+        while y in canonicals:
+            y = tuple(canonical.shuffled().canonical()[0:num_cores])
+        canonicals.add(y)
+        ret[y] = (y, num_symmetrics)
+        symmetric = TreePermutation(deepcopy(topology).restrict(y, 'PU'))
+        local = set()
         for i in range(num_symmetrics):
-            z = y.shuffled_equivalent()
-            while z in local_sym.keys():
-                z = y.shuffled_equivalent()
-            local_sym[z] = [ 1, 0 ]
-            if output_file is not None:
-                out.write(str(z) + ' 1\n')
-        for p, n in local_sym.items():
-            symmetrics[p] = n
+            z = symmetric.shuffled_equivalent()
+            z = tuple([ x.logical_index for x in symmetric.tree if x.is_leaf() ])
+            while z in local:
+                z = symmetric.shuffled_equivalent()
+                z = tuple([ x.logical_index for x in symmetric.tree if x.is_leaf() ])
+            ret[z] = (y, 1)
             
-    for p, n in canonicals.items():
-        symmetrics[p] = n
-    return symmetrics
+    for z, x in ret.items():
+        y = x[0]
+        n = x[1]
+        sy = ':'.join([str(i) for i in y])
+        sz = ':'.join([str(i) for i in z])
+        print('{} {} {}\n'.format(sy, sz, 1))
+        out.write('{} {} {}\n'.format(sy, sz, 1))
+        
+    return ret
 
 def read_permutations(file):
     perms = {}
@@ -103,9 +99,11 @@ def read_permutations(file):
         raise FileNotFoundError()
     with open(file, 'r') as f:
         for l in f.readlines():
-            p, n = l.split()
-            p = Permutation([ int(i) for i in p.split(':') ])
-            perms[p] = int(n)
+            symmetric, canonical, n = l.split()
+            canonical = tuple([ int(i) for i in canonical.split(':') ])
+            symmetric = tuple([ int(i) for i in symmetric.split(':') ])
+            n = int(n)
+            perms[symmetric] = (canonical, n)
     return perms
 
 class Case:
@@ -131,12 +129,13 @@ class Case:
         permutations = read_permutations(self.permutation_file)
         try:
             f = open(self.output_file, 'r')
-            for line in f.readlines():
-                p = Permutation(line.split()[0].strip('"'))
+            for l in f.readlines():
+                symmetric, _, _, _, _ = l.split()
+                symmetric = tuple([ str(i) for i in symmetric.strip('"').split(':') ])
                 try:
-                    permutations[p] -= 1
+                    permutations[symmetric] -= 1
                     if permutations[p] <= 0:
-                        del(permutations[p])
+                        del(permutations[symmetric])
                 except KeyError:
                     pass
         except FileNotFoundError:
@@ -148,12 +147,14 @@ class Case:
 
     def __next__(self):
         permutations = self.remaining_permutations()
-        keys = list(iter(permutations.keys()))
-        n = len(keys)
+        items = list(iter(permutations.items()))
+        n = len(items)
         if n == 0:
             raise StopIteration
         k = randrange(n)
-        out = run(self.application, keys[k], *self.app_args, **self.app_kwargs)
+        symmetric, (canonical, n) = items[k]
+        out = run(self.application, symmetric, canonical,
+                  *self.app_args, **self.app_kwargs)
 
         try:
             f = open(self.output_file, 'a')
