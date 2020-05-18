@@ -159,8 +159,24 @@ class Topology(Tree):
                                                  o['type'], input_topology)
                 leaf.connect_children(children)
 
+    def __repr__(self):
+        return '{}:{}'.format(self.type, self.logical_index)
+
     def get_nbobjs_by_type(self, type: str):
         return len(self.select(lambda n: n.type == type))
+    
+    def restrict(self, indexes: list, type: str):
+        print('next {}:{}'.format(type, indexes))
+        
+        # Prune nodes in index.
+        eliminated = self.prune(lambda n: n.type == type and
+                                n.logical_index not in indexes)
+        elimination = [ e.parent for e in eliminated if e.parent.arity() == 0 ]
+        if len(elimination) > 0:
+            next_type = next(iter(elimination)).type
+            next_indexes = [ n.logical_index for n in self
+                             if n.type == next_type and n not in elimination ]
+            return self.restrict(next_indexes, next_type)
 
 "Pre initialized current machine topology."
 topology = Topology()
@@ -168,5 +184,7 @@ topology = Topology()
 __all__ = [ 'Topology', 'topology' ]
 
 if __name__ == '__main__':
-    for i in TreeIterator(topology):
-        print('{}:{} at depth {}'.format(i.type, i.logical_index, i.depth()))
+    t = Topology()
+    print(t)
+    t.restrict([0,1], 'PU')
+    print(t)
