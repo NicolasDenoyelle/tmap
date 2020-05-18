@@ -39,6 +39,25 @@ class Tree:
         for k, v in kwargs.items():
             setattr(self, k, v)
 
+    def __repr__(self):
+        return str(self.coords())
+
+    def __str__(self):
+        s = ""
+        depth = self.max_depth()
+        for n in self:
+            coords = n.coords()
+            if len(coords) == 0:
+                continue
+            for i in range(len(coords)-1):
+                s += ('|' if coords[i] != 0 else ' ') + (' ' * (i+1) * 3)
+            s += '+' + ('-'*len(coords)*3) + '{}\n'.format(repr(n))
+            if n != n.parent.children[-1]:
+                for i in range(len(coords)-1):
+                    s += ('|' if coords[i] != 0 else ' ') + (' ' * (i+1) * 3)
+                s += '|' + ' ' * (len(coords)*3 + 3) + '\n'
+        return s
+
     "Iterate the tree as per TreeIterator walk."
     def __iter__(self):
         return TreeIterator(self)
@@ -204,6 +223,23 @@ class Tree:
         # Run recursively on children
         for c in self.children:
             c.sort()
+    
+    """
+    Prune a node a the tree.
+    @param cond provides a condition on a node for elimination.
+    if cond modified and does not eliminate this node, the tree
+    is walked recursively to eliminate decendants based on cond.
+    """
+    def prune(self, cond=lambda n: True):
+        eliminated = [ n for n in self if cond(n) ]
+        for e in eliminated:
+            if e.parent is not None:
+                e.parent.children = [ c for c in e.parent.children if c != e ]
+                e.parent = None
+            for c in e.children:
+                c.parent = None
+            e.children = []
+        return eliminated
 
 """
 Iterator on all nodes of the tree
@@ -358,3 +394,7 @@ if __name__ == '__main__':
     print([ n.tag for n in TreeIterator(tleaf, lambda n: n.is_leaf()) ])
     for i in ScatterTreeIterator(tleaf, cond= lambda node: node.is_leaf()):
         print('{}'.format(i.coords()))
+    print(tleaf)
+    
+    tleaf.prune(lambda n: n.is_leaf() and n.coords()[-1] == 0)
+    print(tleaf)
