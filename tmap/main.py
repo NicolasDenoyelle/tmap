@@ -57,36 +57,37 @@ def run(app: Application, symmetric, canonical, *args, **kwargs):
     return output
 
 def gen_permutations(num_canonical = 100, num_symmetrics = 100, output_file=None):
-    if output_file is not None:
-        out = open(output_file, 'w')
     ret = {}
     
     num_cores = topology.get_nbobjs_by_type('Core')
     
     # Class for computing canonical permutations
-    canonical = TreePermutation(Topology())
+    permutation = TreePermutation(Topology())
 
     canonicals = set()
     for i in range(num_canonical):
-        y = tuple(canonical.shuffled().canonical()[0:num_cores])
+        y = tuple(permutation.shuffled().canonical()[0:num_cores])
         while y in canonicals:
-            y = tuple(canonical.shuffled().canonical()[0:num_cores])
+            y = tuple(permutation.shuffled().canonical()[0:num_cores])
         canonicals.add(y)
         ret[y] = (y, num_symmetrics)
-        symmetric = TreePermutation(deepcopy(topology).restrict(y, 'PU'))
         local = set()
         for i in range(num_symmetrics):
-            z = symmetric.shuffled_equivalent()
-            z = tuple([ x.logical_index for x in symmetric.tree if x.is_leaf() ])
+            permutation.shuffled_equivalent()
+            z = [ x.logical_index for x in permutation.tree if x.is_leaf() ]
+            z = tuple([ z[i] for i in y ])
             while z in local or z == y:
-                z = symmetric.shuffled_equivalent()
-                z = tuple([ x.logical_index for x in symmetric.tree if x.is_leaf() ])
+                permutation.shuffled_equivalent()
+                z = [ x.logical_index for x in permutation.tree if x.is_leaf() ]
+                z = tuple([ z[i] for i in y ])
             ret[z] = (y, 1)
-            
-    for z, (y, n) in ret.items():
-        sy = ':'.join([str(i) for i in y])
-        sz = ':'.join([str(i) for i in z])
-        out.write('{} {} {}\n'.format(sz, sy, n))
+
+    if output_file is not None:
+        out = open(output_file, 'w')
+        for z, (y, n) in ret.items():
+            sy = ':'.join([str(i) for i in y])
+            sz = ':'.join([str(i) for i in z])
+            out.write('{} {} {}\n'.format(sz, sy, n))
         
     return ret
 
@@ -190,7 +191,7 @@ if __name__ == '__main__':
             for args in v:
                 case = Case(app, *args, hostname=hostname)
                 permutations = case.remaining_permutations()
-                tot += sum([ n for _, n in permutations.values() ])
+                tot += sum([ n for _, (_, n) in permutations.items() ])
         return tot
 
     def parse_cases(args):
