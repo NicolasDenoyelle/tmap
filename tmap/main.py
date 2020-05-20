@@ -11,7 +11,7 @@ import os
 import re
 import sys
 from copy import deepcopy
-from random import randrange
+from random import randint
 from socket import gethostname
 from application import Application, applications
 from topology import Topology, topology
@@ -149,17 +149,16 @@ class Case:
         n = len(items)
         if n == 0:
             raise StopIteration
-        k = randrange(n)
-        symmetric, (canonical, n) = items[k]
-        out = run(self.application, symmetric, canonical,
-                  *self.app_args, **self.app_kwargs)
-
-        try:
-            f = open(self.output_file, 'a')
-        except FileNotFoundError:
-            f = open(self.output_file, 'x')
-        f.write(out + '\n')
-        f.flush()
+        for k in set([ randint(0, n) for i in range(50 if n > 50 else n) ]):
+            symmetric, (canonical, n) = items[k]
+            out = run(self.application, symmetric, canonical,
+                      *self.app_args, **self.app_kwargs)
+            try:
+                f = open(self.output_file, 'a')
+            except FileNotFoundError:
+                f = open(self.output_file, 'x')
+                f.write(out + '\n')
+                f.flush()
 
 if __name__ == '__main__':
     bin = sys.argv[0]
