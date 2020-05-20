@@ -150,15 +150,16 @@ class Case:
         if n == 0:
             raise StopIteration
         for k in set([ randint(0, n) for i in range(50 if n > 50 else n) ]):
-            symmetric, (canonical, n) = items[k]
-            out = run(self.application, symmetric, canonical,
-                      *self.app_args, **self.app_kwargs)
-            try:
-                f = open(self.output_file, 'a')
-            except FileNotFoundError:
-                f = open(self.output_file, 'x')
-                f.write(out + '\n')
-                f.flush()
+            symmetric, (canonical, i) = items[k]
+            for j in range(i):
+                out = run(self.application, symmetric, canonical,
+                          *self.app_args, **self.app_kwargs)
+                try:
+                    f = open(self.output_file, 'a')
+                except FileNotFoundError:
+                    f = open(self.output_file, 'x')
+                    f.write(out + '\n')
+                    f.flush()
 
 if __name__ == '__main__':
     bin = sys.argv[0]
