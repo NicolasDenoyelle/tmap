@@ -9,6 +9,7 @@
 
 from tree import Tree, TreeIterator
 from permutation import TreePermutation
+from copy import deepcopy
 import subprocess
 import re
 
@@ -177,10 +178,13 @@ class Topology(Tree):
             return self.restrict(next_indexes, next_type)
         return self
 
+    def dup(self):
+        return deepcopy(self)
+
 "Pre initialized current machine topology."
 topology = Topology()
 
-__all__ = [ 'Topology', 'topology' ]
+__all__ = [ 'topology', 'Topology' ]
 
 if __name__ == '__main__':
     t = Topology()

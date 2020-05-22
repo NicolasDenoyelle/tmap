@@ -17,7 +17,7 @@ from permutation import Permutation
 from topology import Topology
 from tree import TreeIterator
 
-hostname = lambda: re.match('[a-zA-Z_\-]+', gethostname()).group()
+hostname_regex = re.compile('[a-zA-Z_\-]+')
 
 """
 Decorator that moves into the application directory while running the function.
@@ -26,7 +26,7 @@ def app_local(f):
     def wrapper(*args, **kwargs):
         me = args[0]
         cwd = os.getcwd()
-        os.chdir(me.path)
+        os.chdir(me.local_dir())
         try:
             ret = f(*args, **kwargs)
             os.chdir(cwd)
@@ -35,6 +35,36 @@ def app_local(f):
             os.chdir(cwd)
             raise e
     return wrapper
+
+"""
+Stringify application argument list in a single output field.
+"""
+def args_str(*args, **kwargs):
+    fmt = re.compile('\w+')
+
+    args_list=[]
+    for arg in args:
+        if fmt.match(str(arg)) is None:
+            raise ValueError('arg: "{!s}" error. Expected arg format: [0-9a-zA-Z_]'.format(str(arg)))
+        args_list.append('{!s}'.format(arg))
+        
+    for k,v in kwargs.items():
+        k = str(k)
+
+        if v is not None:
+            v = str(v)
+            if fmt.match(v) is None:
+                raise ValueError('kwarg: {} error. Expected arg format: [0-9a-zA-Z_]'.format(v))
+            if len(k) == 1:
+                args_list.append('-{!s}={!s}'.format(k,v))
+            else:
+                args_list.append('--{!s}={!s}'.format(k,v))
+        else:
+            if len(k) == 1:
+                args_list.append('-{}'.format(k))
+            else:
+                args_list.append('--{}'.format(k))
+    return ':'.join(args_list)
 
 """
 Generic class that describes an application.
@@ -66,24 +96,19 @@ class Application:
         except NotImplementedError:
             pass
         self.binding = None
+        local_dir = self.local_dir()
         try:
-            basename = os.path.basename(self.dir())
-            self.path = '{}{}{}-{}'.format(os.getcwd(), os.path.sep, basename, hostname())
-            if not os.path.isdir(self.path):
-                copytree(self.dir(), self.path)
+            if not os.path.isdir(local_dir):
+                copytree(self.dir(), local_dir)
                 self.setup()
         except NotImplementedError:
-            self.path = os.getcwd()
-        time = str(datetime.now())
-        time = re.sub('\s', '-', time)
-        self.out_file = self.path + os.path.sep + 'run-{}.out'.format(time)
-        
+            pass        
+    
     """
     Return application name represented by this class.
     Must be implemented.
     """
-    @classmethod
-    def name(cls):
+    def name(self):
         raise NotImplementedError
     
     """
@@ -93,6 +118,18 @@ class Application:
     @classmethod
     def dir(cls):
         raise NotImplementedError
+
+    """
+    Directory where files are copied, compiled run.
+    """
+    def local_dir(self, hostname = gethostname()):
+        try:
+            basename = os.path.basename(self.dir())
+        except NotImplementedError:
+            return os.getcwd()
+        hostname = hostname_regex.match(hostname).group()
+        return '{}{}{}-{}'.format(os.getcwd(), os.path.sep,
+                                  basename, hostname)
     
     """
     Compile application from its directory.
@@ -159,18 +196,12 @@ class Application:
     """
     def cmdline(self, *args, **kwargs) -> str:
         raise NotImplementedError
-    
-    """
-    Get the content of application standard output as an array of lines.
-    """
-    def output(self):
-        with open(self.out_file) as f:
-            return f.readlines()
-        
+            
     """
     Get application Figure Of Merit (FOM) or time after it is run.
+    @param out: The content of stdout.
     """
-    def get_timing(self):
+    def get_timing(self, output: str):
         raise NotImplementedError
     
     """
@@ -185,41 +216,34 @@ class Application:
         except Exception as e:
             print('Command line failed: {}'.format(cmd))
             raise e
-        try:
-            f = open(self.out_file, 'a')
-        except FileNotFoundError:
-            f = open(self.out_file, 'x')
-        f.write(out)
-        f.flush()
-        seconds = self.get_timing()
-        os.remove(self.out_file)
+        seconds = self.get_timing(out)
         return seconds
 
 """
 Class representing application that can be run straight out of a command line
 """
 class Bash(Application):
+    time_regex = re.compile('.*(?P<minutes>\d+):(?P<seconds>\d+).(?P<milliseconds>\d+).*')
+    
     """
     Build application from its binary name.
     """
     def __init__(self, bin: str):
-        super().__init__()
         self.bin = bin
+        super().__init__()
         
-    @classmethod
     def name(self):
         return os.path.basename(self.bin)
     
     def cmdline(self, *args, **kwargs):
         return self.make_cmdline(self.bin,
                                  *args,
-                                 prepend='/usr/bin/time -o {} -f %E '.format(self.out_file),
+                                 prepend='/usr/bin/time -o /dev/stdout -f %E ',
                                  **kwargs)
     
-    def get_timing(self):        
-        regex = re.compile('(?P<minutes>\d+):(?P<seconds>\d+).(?P<milliseconds>\d+)')
-        for l in self.output():
-            match = regex.match(l)
+    def get_timing(self, output):        
+        for l in output.split('\n'):
+            match = Bash.time_regex.match(l)
             if match is not None:
                 return 60*float(match['minutes']) + float(match['seconds']) + 1e-2*float(match['milliseconds'])
 
@@ -236,11 +260,13 @@ class OpenMP(Application):
 Class representing NAS parallel benchmarks applications
 """
 class NAS(OpenMP):
+    time_regex = re.compile('[\s]*Time[\s]+in[\s]+seconds[\s]+[=][\s]+(?P<seconds>[\d]+[.][\d]+)')
     def __init__(self, _class = 'B'):
         self._class = _class
         super().__init__()
     
-    def dir(self):
+    @classmethod
+    def dir(cls):
         return os.path.expanduser('~') + os.path.sep + 'Documents' + os.path.sep + 'NPB3.4-OMP'
     
     def name(self):
@@ -257,11 +283,9 @@ class NAS(OpenMP):
         bin = os.curdir + os.path.sep + 'bin' + os.path.sep + app + '.' + self._class + '.x'
         return self.make_cmdline(bin)
     
-    def get_timing(self):
-        output = self.output()
-        regex = re.compile('[\s]*Time[\s]+in[\s]+seconds[\s]+[=][\s]+(?P<seconds>[\d]+[.][\d]+)')
-        for l in output:
-            match = regex.match(l)
+    def get_timing(self, output):
+        for l in output.split('\n'):
+            match = NAS.time_regex.match(l)
             if match is not None:
                 return float(match.groupdict()['seconds'])    
 
@@ -271,7 +295,7 @@ __all__ = [ 'Application', 'applications' ]
 
 if __name__ == '__main__':
     echo = Bash('echo')
-    print('echo -n toto: {}'.format(echo.run('-n', 'toto')))
+    print('echo toto: {}'.format(echo.run('-n', 'toto')))
     sleep = Bash('sleep')
     print('sleep 1.2: {}'.format(sleep.run('1.2')))
     nas = NAS()
