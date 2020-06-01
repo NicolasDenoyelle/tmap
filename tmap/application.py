@@ -300,10 +300,6 @@ Class representing LULESH OpenMP application
 class Lulesh(OpenMP, StdoutTiming):
     regex = re.compile('[\s]*Elapsed[\s]+time[\s]+[=][\s]+(?P<seconds>[\d]+[.][\d]+)[\s]+\(s\)')
     
-    def __init__(self, _class = 'B'):
-        self._class = _class
-        super().__init__()
-    
     @classmethod
     def dir(cls):
         return os.path.expanduser('~') + os.path.sep + 'Documents' + os.path.sep + 'LULESH'
