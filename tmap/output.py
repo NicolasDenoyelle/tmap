@@ -101,7 +101,7 @@ class Case:
                       canonical_permutation: list, seconds: float):
         z = ':'.join([str(i) for i in symmetric_permutation])
         y = ':'.join([str(i) for i in canonical_permutation])
-        return '"{}" "{}" {} "{}" {}'.format(z, y, self.application.name(),
+        return '{} {} {} "{}" {}'.format(z, y, self.application.name(),
                                              self.str_args, seconds)
 
     def get_filenames(self):
@@ -122,7 +122,7 @@ class Case:
                 for l in f.readlines():
                     symmetric, _, _, _, _ = l.split()
                     symmetric = tuple([ int(i) for i in \
-                                        symmetric.strip('"').split(':') ])
+                                        symmetric.split(':') ])
                     try:
                         permutations[symmetric] = permutations[symmetric] + 1
                     except KeyError:
