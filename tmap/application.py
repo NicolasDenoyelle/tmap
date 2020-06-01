@@ -195,13 +195,15 @@ class Application:
     where @kwargs keys do not start with '-' or '--'.
     """
     def cmdline(self, *args, **kwargs) -> str:
-        raise NotImplementedError
+        bin = os.curdir + os.path.sep + self.name()
+        return self.make_cmdline(bin, *args, **kwargs)
             
     """
     Get application Figure Of Merit (FOM) or time after it is run.
     @param out: The content of stdout.
     """
-    def get_timing(self, output: str):
+    @classmethod
+    def get_timing(cls, output: str):
         raise NotImplementedError
     
     """
@@ -240,13 +242,24 @@ class Bash(Application):
                                  *args,
                                  prepend='/usr/bin/time -o /dev/stdout -f %E ',
                                  **kwargs)
-    
-    def get_timing(self, output):        
+
+    @classmethod
+    def get_timing(cls, output):        
         for l in output.split('\n'):
-            match = Bash.time_regex.match(l)
+            match = Bash.time_regex.match(l)            
             if match is not None:
+                match = match.groupdict()
                 return 60*float(match['minutes']) + float(match['seconds']) + 1e-2*float(match['milliseconds'])
 
+class StdoutTiming(Application):
+    regex = None
+
+    @classmethod
+    def get_timing(cls, output):
+        for l in output.split('\n'):
+            match = cls.regex.match(l)
+            if match is not None:
+                return float(match.groupdict()['seconds'])
 
 class OpenMP(Application):
     def bind(self, topology_nodes: list):
@@ -259,8 +272,9 @@ class OpenMP(Application):
 """
 Class representing NAS parallel benchmarks applications
 """
-class NAS(OpenMP):
-    time_regex = re.compile('[\s]*Time[\s]+in[\s]+seconds[\s]+[=][\s]+(?P<seconds>[\d]+[.][\d]+)')
+class NAS(OpenMP, StdoutTiming):
+    regex = re.compile('[\s]*Time[\s]+in[\s]+seconds[\s]+[=][\s]+(?P<seconds>[\d]+[.][\d]+)')
+    
     def __init__(self, _class = 'B'):
         self._class = _class
         super().__init__()
@@ -275,21 +289,32 @@ class NAS(OpenMP):
     def compile(self):
         return 'make suite CLASS={}'.format(self._class)
     
-    def clean(self):
-        return 'make clean'
-    
     def cmdline(self, *args, **kwargs):
         app = args[0]
         bin = os.curdir + os.path.sep + 'bin' + os.path.sep + app + '.' + self._class + '.x'
         return self.make_cmdline(bin)
-    
-    def get_timing(self, output):
-        for l in output.split('\n'):
-            match = NAS.time_regex.match(l)
-            if match is not None:
-                return float(match.groupdict()['seconds'])    
 
-applications = { 'NAS': NAS(), 'sleep': Bash('sleep'), 'echo': Bash('echo') }
+"""
+Class representing LULESH OpenMP application
+"""
+class Lulesh(OpenMP, StdoutTiming):
+    regex = re.compile('[\s]*Elapsed[\s]+time[\s]+[=][\s]+(?P<seconds>[\d]+[.][\d]+)[\s]+\(s\)')
+    
+    def __init__(self, _class = 'B'):
+        self._class = _class
+        super().__init__()
+    
+    @classmethod
+    def dir(cls):
+        return os.path.expanduser('~') + os.path.sep + 'Documents' + os.path.sep + 'LULESH'
+    
+    def name(self):
+        return 'lulesh2.0'
+    
+    def compile(self):
+        return 'make'
+                
+applications = { 'NAS': NAS(), 'sleep': Bash('sleep'), 'echo': Bash('echo'), 'lulesh': Lulesh() }
 
 __all__ = [ 'Application', 'applications' ]
 
@@ -300,3 +325,5 @@ if __name__ == '__main__':
     print('sleep 1.2: {}'.format(sleep.run('1.2')))
     nas = NAS()
     print('NAS cg: {}'.format(nas.run('cg')))
+    lulesh = Lulesh()
+    print('lulesh -i 10: {}'.format(lulesh.run(i=10)))
