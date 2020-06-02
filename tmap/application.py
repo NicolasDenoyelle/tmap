@@ -40,12 +40,12 @@ def app_local(f):
 Stringify application argument list in a single output field.
 """
 def args_str(*args, **kwargs):
-    fmt = re.compile('[-]?\w+')
+    fmt = re.compile('-?\w+')
 
     args_list=[]
     for arg in args:
         if fmt.match(str(arg)) is None:
-            raise ValueError('arg: "{!s}" error. Expected arg format: [0-9a-zA-Z_]'.format(str(arg)))
+            raise ValueError('arg: "{!s}" error. Expected arg format: -?[0-9a-zA-Z_]'.format(str(arg)))
         args_list.append('{!s}'.format(arg))
         
     for k,v in kwargs.items():
@@ -66,6 +66,13 @@ def args_str(*args, **kwargs):
                 args_list.append('--{}'.format(k))
     return ':'.join(args_list)
 
+def str_args(s: str):
+    args = s.split()
+    kwargs = zip(args[:-1], args[1:])
+    kwargs = { x.strip('-'):y.strip('"') for (x,y) in kwargs if x[0] == '-' and y[0] != '-' }
+    args = [ a for a in args if a.strip('-') not in list(kwargs.keys()) + list(kwargs.values())]
+    return args, kwargs
+    
 """
 Generic class that describes an application.
 An application needs to provide way to:
@@ -246,7 +253,7 @@ class Bash(Application):
     @classmethod
     def get_timing(cls, output):        
         for l in output.split('\n'):
-            match = Bash.time_regex.match(l)            
+            match = cls.time_regex.match(l)
             if match is not None:
                 match = match.groupdict()
                 return 60*float(match['minutes']) + float(match['seconds']) + 1e-2*float(match['milliseconds'])
@@ -256,50 +263,10 @@ class StdoutTiming(Application):
 
     @classmethod
     def get_timing(cls, output):
-        if cls.regex is None:
-            raise ValueError('StdoutTiming application {} must provide a \
-            regular expression to extract timing from output'.format(cls.__name__))
-
         for l in output.split('\n'):
             match = cls.regex.match(l)
             if match is not None:
-                group = match.groupdict()
-                try:
-                    hours = float(group['hours'])
-                except KeyError:
-                    hours = 0.0
-                try:
-                    minutes = float(group['minutes'])
-                except KeyError:
-                    minutes = 0.0 
-                try:
-                    seconds = float(group['seconds'])
-                except KeyError:
-                    seconds = 0.0
-                try:
-                    milliseconds = float(group['milliseconds'])
-                except KeyError:
-                    milliseconds = 0.0
-                try:
-                    microseconds = float(group['microseconds'])
-                except KeyError:
-                    microseconds = 0.0
-                try:
-                    nanoseconds = float(group['nanoseconds'])
-                except KeyError:
-                    nanoseconds = 0.0
-
-                seconds = seconds + \
-                          (hours * 3600) + \
-                          (minutes * 60) + \
-                          (milliseconds / 1e3) + \
-                          (microseconds / 1e6) + \
-                          (nanoseconds / 1e9)
-                
-                if seconds == 0:
-                    seconds = float(match.group(0))
-                    
-                return seconds
+                return float(match.groupdict()['seconds'])
 
 class OpenMP(Application):
     def bind(self, topology_nodes: list):
@@ -340,6 +307,9 @@ Class representing LULESH OpenMP application
 class Lulesh(OpenMP, StdoutTiming):
     regex = re.compile('[\s]*Elapsed[\s]+time[\s]+[=][\s]+(?P<seconds>[\d]+[.][\d]+)[\s]+\(s\)')
     
+    def __init__(self):
+        super().__init__()
+    
     @classmethod
     def dir(cls):
         return os.path.expanduser('~') + os.path.sep + 'Documents' + os.path.sep + 'LULESH'
@@ -349,7 +319,8 @@ class Lulesh(OpenMP, StdoutTiming):
     
     def compile(self):
         return 'make'
-                
+    
+            
 applications = { 'NAS': NAS(), 'sleep': Bash('sleep'), 'echo': Bash('echo'), 'lulesh': Lulesh() }
 
 __all__ = [ 'Application', 'applications' ]

@@ -14,23 +14,19 @@ from socket import gethostname
 from output import Case
 from application import applications
 
-cases = {
-    'NAS':  [
-        [ 'cg' ], 
-        [ 'ep' ],
-        [ 'ft' ],
-        [ 'is' ],
-        [ 'lu' ],
-        [ 'mg' ],
-        [ 'sp' ],
-    ],
-    'lulesh': [
-        {},
-        { 'b': None },
-        { 'r': '3' },
-        { 'r': '32', 'b': None },
-    ]
-}
+cases = [
+    Case(applications['NAS'], 'cg'),
+    Case(applications['NAS'], 'ep'),
+    Case(applications['NAS'], 'ft'),
+    Case(applications['NAS'], 'is'),
+    Case(applications['NAS'], 'lu'),
+    Case(applications['NAS'], 'mg'),
+    Case(applications['NAS'], 'sp'),
+    Case(applications['lulesh']),
+    Case(applications['lulesh'], b=4),
+    Case(applications['lulesh'], r=3),
+    Case(applications['lulesh'], b=4, r=32),
+]
 
 actions = [ 'rem', 'run' ]
 
@@ -42,36 +38,12 @@ def usage():
     permutation file with num_canonical permutations and num_symmetrics 
     permutations per canonical permutation""")
 
-def parse_cases(args):
+def parse_cases(args, hostname):
     if len(args) == 0:
         return cases
-    app = args[0]
-    
     if len(args) == 1:
-        return { app: cases[app] }
-
-    subcases = []
-    for case in cases[app]:
-        if isinstance(case, list) and next((arg in case for arg in args), False):
-            subcases.append(case)
-            continue
-        if isinstance(case, dict):
-            flags = [ i in list(zip([ i.strip('-') for i in args ], args[1:]+[ None ])) for i in case.items() ]
-            opts = [ i in list(zip([ i.strip('-') for i in args ], [ None for a in args ])) for i in case.items() ]
-            if all([ f or o for f,o in zip(flags, opts)]) and (len(flags) > 0 or len(args) == 0):
-                subcases.append(case)
-                continue
-    return { app: subcases }
-
-def remaining(hostname = gethostname(), _cases = cases):
-    tot = 0
-    for k,v in _cases.items():
-        for args in v:
-            if isinstance(args, list):
-                tot += Case(applications[k], *args, hostname=hostname).count_remainings()
-            if isinstance(args, dict):
-                tot += Case(applications[k], hostname=hostname, **args).count_remainings()
-    return tot
+        return [ c for c in cases if c.application.name() == args[0] ]
+    return [ Case.from_string(args[0], ' '.join(args[1:]), hostname) ]
 
 if __name__ == '__main__':
     bin = sys.argv[0]
@@ -87,25 +59,23 @@ if __name__ == '__main__':
     if len(sys.argv) > 0:
         if sys.argv[0] not in actions:
             usage()
-            sys.exit(1)            
+            sys.exit(1)
+
     action = sys.argv[0]
+    hostname = gethostname()
 
     if action == 'rem':
-        hostname = gethostname()
-        if len(sys.argv) > 1 and sys.argv[1] not in cases.keys():
-            hostname = sys.argv[1]
-            _cases = parse_cases(sys.argv[2:])
+        if sys.argv[1] in applications.keys():
+            todo =  parse_cases(sys.argv[1:], hostname)
         else:
-            _cases = parse_cases(sys.argv[1:])
-        print(remaining(hostname, _cases))
+            todo =  parse_cases(sys.argv[2:], sys.argv[1])            
+        print(sum([ c.count_remainings() for c in todo if c in cases ]))
         sys.exit(0)
     
     if action == 'run':
-        _cases = parse_cases(sys.argv[1:])
-        for k,v in _cases.items():
-            app = applications[k]
-            for args in v:
-                case = Case(app, *args)
-                for i in iter(case):
-                    pass
+        for case in parse_cases(sys.argv[1:], hostname):
+            if case not in cases:
+                continue
+            for i in iter(case):
+                pass
         sys.exit(0)

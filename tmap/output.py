@@ -11,7 +11,7 @@ import os
 import re
 from socket import gethostname
 from random import shuffle
-from application import Application, args_str, hostname_regex
+from application import applications, Application, args_str, hostname_regex, str_args
 from permutation import TreePermutation
 from datetime import datetime
 from topology import topology
@@ -85,6 +85,19 @@ class Case:
         self.args = args
         self.kwargs = kwargs
         self.str_args = args_str(*args, **kwargs)
+
+    @staticmethod
+    def from_string(application: str, args: str, hostname=gethostname()):
+        application = applications[application]
+        args, kwargs = str_args(args)
+        return Case(application, *args, hostname=hostname, **kwargs) 
+
+    def __eq__(self, other):
+        if self.application.name() != other.application.name():
+            return False
+        if self.str_args != other.str_args:
+            return False
+        return True
 
     def output_file(self):
         file = self.application.local_dir(str(self.host)) + os.path.sep
