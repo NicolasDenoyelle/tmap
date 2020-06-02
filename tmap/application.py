@@ -40,7 +40,7 @@ def app_local(f):
 Stringify application argument list in a single output field.
 """
 def args_str(*args, **kwargs):
-    fmt = re.compile('\w+')
+    fmt = re.compile('[-]?\w+')
 
     args_list=[]
     for arg in args:
@@ -256,10 +256,50 @@ class StdoutTiming(Application):
 
     @classmethod
     def get_timing(cls, output):
+        if cls.regex is None:
+            raise ValueError('StdoutTiming application {} must provide a \
+            regular expression to extract timing from output'.format(cls.__name__))
+
         for l in output.split('\n'):
             match = cls.regex.match(l)
             if match is not None:
-                return float(match.groupdict()['seconds'])
+                group = match.groupdict()
+                try:
+                    hours = float(group['hours'])
+                except KeyError:
+                    hours = 0.0
+                try:
+                    minutes = float(group['minutes'])
+                except KeyError:
+                    minutes = 0.0 
+                try:
+                    seconds = float(group['seconds'])
+                except KeyError:
+                    seconds = 0.0
+                try:
+                    milliseconds = float(group['milliseconds'])
+                except KeyError:
+                    milliseconds = 0.0
+                try:
+                    microseconds = float(group['microseconds'])
+                except KeyError:
+                    microseconds = 0.0
+                try:
+                    nanoseconds = float(group['nanoseconds'])
+                except KeyError:
+                    nanoseconds = 0.0
+
+                seconds = seconds + \
+                          (hours * 3600) + \
+                          (minutes * 60) + \
+                          (milliseconds / 1e3) + \
+                          (microseconds / 1e6) + \
+                          (nanoseconds / 1e9)
+                
+                if seconds == 0:
+                    seconds = float(match.group(0))
+                    
+                return seconds
 
 class OpenMP(Application):
     def bind(self, topology_nodes: list):

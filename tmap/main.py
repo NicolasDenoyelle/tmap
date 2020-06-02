@@ -17,22 +17,22 @@ from application import applications
 cases = {
     'NAS':  [
         [ 'cg' ], 
-        [ 'dc' ],
         [ 'ep' ],
         [ 'ft' ],
         [ 'is' ],
         [ 'lu' ],
         [ 'mg' ],
         [ 'sp' ],
-        [ 'ua' ],
     ],
     'lulesh': [
-        [],
-        [ '-b' ],
-        [ '-r', 3 ],
-        [ '-r', 32, '-b' ],
+        {},
+        { 'b': None },
+        { 'r': '3' },
+        { 'r': '32', 'b': None },
     ]
 }
+
+actions = [ 'rem', 'run' ]
 
 def usage():
     print('{} <action> <action_args> ...\n'.format(bin))
@@ -46,21 +46,36 @@ def parse_cases(args):
     if len(args) == 0:
         return cases
     app = args[0]
+    
     if len(args) == 1:
         return { app: cases[app] }
-    tot = [ i for i in range(len(cases[app])) if all([a in cases[app][i] \
-                                                      for a in args[1:]]) ]
-    return { app: [ cases[app][i] for i in tot ] }
+
+    subcases = []
+    for case in cases[app]:
+        if isinstance(case, list) and next((arg in case for arg in args), False):
+            subcases.append(case)
+            continue
+        if isinstance(case, dict):
+            flags = [ i in list(zip([ i.strip('-') for i in args ], args[1:]+[ None ])) for i in case.items() ]
+            opts = [ i in list(zip([ i.strip('-') for i in args ], [ None for a in args ])) for i in case.items() ]
+            if all([ f or o for f,o in zip(flags, opts)]) and (len(flags) > 0 or len(args) == 0):
+                subcases.append(case)
+                continue
+    return { app: subcases }
 
 def remaining(hostname = gethostname(), _cases = cases):
-    return sum([ sum([ Case(applications[k], *args, hostname=hostname).\
-                       count_remainings() for args in v ]) \
-                 for k,v in _cases.items() ])
+    tot = 0
+    for k,v in _cases.items():
+        for args in v:
+            if isinstance(args, list):
+                tot += Case(applications[k], *args, hostname=hostname).count_remainings()
+            if isinstance(args, dict):
+                tot += Case(applications[k], hostname=hostname, **args).count_remainings()
+    return tot
 
 if __name__ == '__main__':
     bin = sys.argv[0]
     sys.argv = sys.argv[1:]
-    actions = [ 'rem', 'run' ]
 
     if len(sys.argv) == 0 or \
        sys.argv[0] == 'help' or \
