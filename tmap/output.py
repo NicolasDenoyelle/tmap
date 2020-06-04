@@ -9,9 +9,11 @@
 
 import os
 import re
+from itertools import cycle, islice
 from socket import gethostname
 from random import shuffle
 from application import applications, Application, args_str, hostname_regex, str_args
+from tree import TreeIterator
 from permutation import TreePermutation
 from datetime import datetime
 from topology import topology
@@ -30,33 +32,59 @@ class Host:
     
     def __str__(self):
         return self.hostname
-        
+
+    """
+    Compute @num_canonical distinct permutations.
+    For each canonical permutation, compute @num_symmetrics distinct 
+    permutations.
+    Each permutation contains @num_threads index representing a physical PU
+    mapped on a @map_by object.
+    If @num_threads oversubscribe the number of @map_by in topology, @map_by
+    will cycle in a round-robin fashion on the permutation. 
+    Resulting permutation are stored in a host local file.
+    """
     def gen_permutations(self,
                          num_canonical = 100,
                          num_symmetrics = 100,
-                         num_threads = topology.get_nbobjs_by_type('Core')):
+                         num_threads = topology.get_nbobjs_by_type('Core'),
+                         map_by = 'Core'):
         ret = {}    
-        # Class for computing canonical permutations
-        permutation = TreePermutation(self.topology.dup())
-        
+
+        # Make a topology tree with `map_by` leaves.
+        topo = self.topology.dup()
+        objects = [ n for n in topo if n.type == map_by ]
+        for node in objects:
+            # Prune children
+            for child in node.children:
+                child.prune()
+
+        # Class for computing permutations on topology
+        permutation = TreePermutation(topo)
+
+        # Set of canonical permutations: PUs os_index
         canonicals = set()
-        for i in range(num_canonical):
-            y = tuple(permutation.shuffled().canonical()[0:num_threads])
-            while y in canonicals:
-                y = tuple(permutation.shuffled().canonical()[0:num_threads])
-            canonicals.add(y)
+        while len(canonicals) < num_canonical:
+            # Compute a random canonical permutation
+            canonical = permutation.shuffled().canonical()
+            y = tuple([ objects[i].PUs[0].os_index 
+                        for i in islice(cycle(canonical.elements), num_threads) ])
+            if y in canonicals:
+                continue
+            canonicals.add(y)            
             ret[y] = (y, num_symmetrics)
-            symetrics = set()
-            for i in range(num_symmetrics):
-                permutation.shuffled_equivalent()
-                z = [ x.logical_index for x in permutation.tree if x.is_leaf() ]
-                z = tuple([ z[i] for i in y ])
-                while z in symetrics or z == y:
-                    permutation.shuffled_equivalent()
-                z = [ x.logical_index for x in permutation.tree if x.is_leaf() ]
-                z = tuple([ z[i] for i in y ])
-                ret[z] = (y, 1)
+
         
+
+            # Set of symmetric  permutations: PUs os_index
+            symetrics = set()
+            while len(symetrics) < num_symmetrics:
+                # Compute a random shuffled equivalent permutation
+                symmetric = canonical.shuffled_equivalent()
+                z = tuple([ objects[i].PUs[0].os_index \
+                            for i in islice(cycle(symmetric.elements), num_threads) ])
+                symetrics.add(z)
+                ret[z] = (y, 1)
+                
         with open(self.permutation_file, 'w') as out:
             for z, (y, n) in ret.items():
                 out.write('{} {} {}\n'.format(':'.join([str(i) for i in z]),
@@ -159,8 +187,8 @@ class Case:
         return sum([n for _, (_, n) in remaining.items()])
 
     def run(self, symmetric: list, canonical: list):
-        PUs = [ n for n in self.host.topology \
-                if n.type == 'PU' and n.logical_index in symmetric ]
+        PUs = [ self.host.topology.get_obj_by_type('PU', i, True) \
+                for i in symmetric ]
         self.application.bind(PUs)
         seconds = self.application.run(*self.args, **self.kwargs)
         output = self.format_result(symmetric, canonical, seconds)
