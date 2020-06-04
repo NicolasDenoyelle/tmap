@@ -99,12 +99,11 @@ class Topology(Tree):
     their type, count and depth.
     If structure is True, topology is filtered to keep objects important for 
     the structure.
-    If no_smt is True, PU objects are filtered.
     If no_io is True, io objects are filtered.
     @return [ dict ] sorted by 'depth' key.
     """
     @staticmethod
-    def objects(structure: bool, no_smt: bool, no_io: bool, input_topology=None):
+    def objects(structure: bool, no_io: bool, input_topology=None):
         regex = re.compile('(Special\s)?depth\s(?P<depth>\-?\d+):' +
                            '[\s]+(?P<count>[-]?\d+)[\s]+(?P<type>\w+)')
         cmd = "hwloc-info"
@@ -122,7 +121,6 @@ class Topology(Tree):
             
         objects = [ regex.match(i.strip()) for i in output ]
         objects = [ i.groupdict() for i in objects if i is not None ]
-        objects = [ o for o in objects if not no_smt or o['type'] != 'PU' ]
         for o in objects:
             o['depth'] = int(o['depth'])
             o['count'] = int(o['count'])
@@ -133,14 +131,15 @@ class Topology(Tree):
     Topology Tree constructor.
     If structure is True, topology is filtered to keep objects important for 
     the structure.
-    If no_smt is True, PU objects are filtered.
     If no_io is True, io objects are filtered.
     """
-    def __init__(self, structure=True, no_smt=False, no_io=True, input_topology=None):
+    def __init__(self, structure=True, no_io=True, input_topology=None):
         self.input_topology = input_topology
-        objects = Topology.objects(structure, no_smt, no_io, input_topology)
+        objects = Topology.objects(structure, no_io, input_topology)
 
         node = Topology.get_node('Machine', 0, input_topology)
+
+        ## Initialize root
         super().__init__(logical_index = node.logical_index,
                          memory_children = node.memory_children,
                          os_index = node.os_index,
@@ -153,12 +152,17 @@ class Topology(Tree):
                                 'count': o['count'], }\
                             for o in objects if o['depth'] < 0 ]
 
+        ## Connect nodes
         for o in [ o for o in objects[:len(objects)] if o['depth'] > 0 ]:
             for leaf in TreeIterator(self, lambda n: n.is_leaf()):
                 children = Topology.get_children(leaf.type,
                                                  leaf.logical_index,
                                                  o['type'], input_topology)
                 leaf.connect_children(children)
+
+        ## Store a list of child PU in all nodes
+        for n in self:
+            n.PUs = [ i for i in TreeIterator(n, lambda x: x.is_leaf()) ]
 
     def __repr__(self):
         return '{}:{}'.format(self.type, self.logical_index)
