@@ -290,7 +290,7 @@ class TreeIterator:
             raise StopIteration
         ret = self.current
         n = self.current.index() + 1
-        if self.current.parent is None:
+        if self.current.parent is None or self.current is self.tree:
             self.current = None
         elif n == len(self.current.parent.children):
             self.current = self.current.parent
