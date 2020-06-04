@@ -270,10 +270,8 @@ class StdoutTiming(Application):
 
 class OpenMP(Application):
     def bind(self, topology_nodes: list):
-        pus = [ Topology.get_children(n.type,
-                                      n.logical_index,
-                                      'PU')[0] for n in topology_nodes ]
-        os.environ['OMP_NUM_THREADS'] = str(len(pus))
+        pus = [ n.PUs[0] for n in topology_nodes ]
+        os.environ['OMP_NUM_THREADS'] = str(len(topology_nodes))
         os.environ['OMP_PLACES'] = ','.join([ str(pu.os_index) for pu in pus ])
 
 """
