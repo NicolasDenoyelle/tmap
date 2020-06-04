@@ -229,7 +229,7 @@ class Tree:
             c.sort()
     
     """
-    Prune a node a the tree.
+    Prune a node of the tree.
     @param cond provides a condition on a node for elimination.
     if cond modified and does not eliminate this node, the tree
     is walked recursively to eliminate decendants based on cond.
