@@ -169,6 +169,13 @@ class Topology(Tree):
 
     def get_nbobjs_by_type(self, type: str):
         return len(self.select(lambda n: n.type == type))
+
+    def get_obj_by_type(self, type: str, index: int, physical=False):
+        if physical:
+            match = lambda n: n.type == type and n.os_index == index
+        else:
+            match = lambda n: n.type == type and n.logical_index == index
+        return next((TreeIterator(self, match)), None)
     
     def restrict(self, indexes: list, type: str):
         # Prune nodes in index.
