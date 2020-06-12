@@ -14,18 +14,13 @@ from permutation import Permutation, TreePermutation
 from topology import Topology
 
 all = [
-    'Tree',
-    'Tleaf',
-    'TreeIterator',
-    'ScatterTreeIterator',
-    'Permutation',
+    'Tree', 'Tleaf', 'TreeIterator', 'ScatterTreeIterator', 'Permutation',
     'TreePermutation'
-    'PermutationIterator',
-    'CanonicalPermutationIterator'
+    'PermutationIterator', 'CanonicalPermutationIterator'
 ]
 
 s, _ = subprocess.getstatusoutput('hwloc-info')
 if s == 0:
     all.append('Topology')
-    
+
 __all__ = all

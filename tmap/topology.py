@@ -12,13 +12,13 @@ from permutation import TreePermutation
 from copy import deepcopy
 import subprocess
 import re
-"""
-Use hwloc-info and hwloc-calc command line utilities to
-create a Tree based on a machine topology.
-"""
-
 
 class Topology(Tree):
+    """
+    Use hwloc-info and hwloc-calc command line utilities to
+    create a Tree based on a machine topology.
+    """
+
     type_re = re.compile('^\stype\s=\s(?P<i>\w+)$')
     lindex_re = re.compile('^\slogical\sindex\s=\s(?P<i>\d+)$')
     osindex_re = re.compile('^\sos\sindex\s=\s(?P<i>\d+)$')
@@ -28,6 +28,10 @@ class Topology(Tree):
 
     @staticmethod
     def parse_obj_info(info: str):
+        """
+        Parse output of 'hwloc-info obj' into a Tree node with attributes:
+        logical_index, os_index, cpuset, nodeset, type and memory_children.
+        """
         logical_index = None
         memory_children = None,
         os_index = None
@@ -63,17 +67,17 @@ class Topology(Tree):
         node.__class__ = Topology
         return node
 
-    """
-    Invoke hwloc-calc to retrieve the list of children of @child_type of a topology
-    object of a certain @type and @logical_index.
-    @return [ dict ]
-    """
-
     @staticmethod
     def get_children(type: str,
                      logical_index: int,
                      child_type: str,
                      input_topology=None):
+        """
+        Retrieve the list of children of type @child_type of a topology
+        object of a certain type @type and index @logical_index.
+        @return [ Topology ] nodes
+        """
+        
         cmd = 'hwloc-info'
         if input_topology is not None:
             cmd += ' --input {}'.format(input_topology)
@@ -83,16 +87,16 @@ class Topology(Tree):
         if out[0] != 0:
             raise ValueError('Invalid topology file')
         elements = re.split('\n\w+.*\n', out[1])
-        return [Topology.parse_obj_info(e) for e in elements]
-
-    """
-    Invoke hwloc-info and parse output to collect some attributes 
-    of a topology object.
-    @return dict
-    """
+        return [ Topology.parse_obj_info(e) for e in elements ]
 
     @staticmethod
     def get_node(type: str, logical_index: int, input_topology=None):
+        """
+        Invoke hwloc-info and parse output to collect some attributes 
+        of a topology object.
+        @return Topology node
+        """
+        
         cmd = 'hwloc-info'
         if input_topology is not None:
             cmd += ' --input {}'.format(input_topology)
@@ -102,17 +106,17 @@ class Topology(Tree):
             raise ValueError('Invalid topology file')
         return Topology.parse_obj_info(out[1])
 
-    """
-    Invoke 'hwloc-info' to retrieve a list of objects in the topology with 
-    their type, count and depth.
-    If structure is True, topology is filtered to keep objects important for 
-    the structure.
-    If no_io is True, io objects are filtered.
-    @return [ dict ] sorted by 'depth' key.
-    """
-
-    @staticmethod
+    @staticmethod    
     def objects(structure: bool, no_io: bool, input_topology=None):
+        """
+        Invoke 'hwloc-info' to retrieve a list of objects in the topology with 
+        their type, count and depth.
+        If structure is True, topology is filtered to keep objects important for 
+        the structure.
+        If no_io is True, io objects are filtered.
+        @return [ dict ] sorted by 'depth' key.
+        """
+
         regex = re.compile('(Special\s)?depth\s(?P<depth>\-?\d+):' +
                            '[\s]+(?P<count>[-]?\d+)[\s]+(?P<type>\w+)')
         cmd = "hwloc-info"
@@ -136,20 +140,20 @@ class Topology(Tree):
         objects.sort(key=lambda i: i['depth'])
         return objects
 
-    """
-    Topology Tree constructor.
-    If structure is True, topology is filtered to keep objects important for 
-    the structure.
-    If no_io is True, io objects are filtered.
-    """
-
     def __init__(self, structure=True, no_io=True, input_topology=None):
+        """
+        Topology Tree constructor.
+        If structure is True, topology is filtered to keep objects important for 
+        the structure.
+        If no_io is True, io objects are filtered.
+        """
+        
         self.input_topology = input_topology
         objects = Topology.objects(structure, no_io, input_topology)
 
         node = Topology.get_node('Machine', 0, input_topology)
 
-        ## Initialize root
+        # Initialize root
         super().__init__(logical_index=node.logical_index,
                          memory_children=node.memory_children,
                          os_index=node.os_index,
@@ -157,19 +161,19 @@ class Topology(Tree):
                          cpuset=node.cpuset,
                          nodeset=node.nodeset)
 
-        self.special_objs = [ { 'depth': o['depth'],
-                                'type': o['type'],
-                                'count': o['count'], }\
-                            for o in objects if o['depth'] < 0 ]
+        self.special_objs = [{'depth': o['depth'],
+                              'type': o['type'],
+                              'count': o['count'], }
+                             for o in objects if o['depth'] < 0]
 
-        ## Connect nodes
+        # Connect nodes
         for o in [o for o in objects[:len(objects)] if o['depth'] > 0]:
             for leaf in TreeIterator(self, lambda n: n.is_leaf()):
                 children = Topology.get_children(leaf.type, leaf.logical_index,
                                                  o['type'], input_topology)
                 leaf.connect_children(children)
 
-        ## Store a list of child PU in all nodes
+        # Store a list of child PU in all nodes
         for n in self:
             n.PUs = [i for i in TreeIterator(n, lambda x: x.is_leaf())]
 
@@ -181,9 +185,9 @@ class Topology(Tree):
 
     def get_obj_by_type(self, type: str, index: int, physical=False):
         if physical:
-            match = lambda n: n.type == type and n.os_index == index
+            def match(n): return n.type == type and n.os_index == index
         else:
-            match = lambda n: n.type == type and n.logical_index == index
+            def match(n): return n.type == type and n.logical_index == index
         return next((TreeIterator(self, match)), None)
 
     def restrict(self, indexes: list, type: str):
