@@ -14,8 +14,8 @@ from permutation import Permutation, TreePermutation
 from topology import Topology
 
 all = [
-    'Tree', 'Tleaf', 'TreeIterator', 'ScatterTreeIterator', 'Permutation',
-    'TreePermutation'
+    'Tree', 'TRandom', 'Tleaf', 'TreeIterator', 'ScatterTreeIterator',
+    'Permutation', 'TreePermutation'
     'PermutationIterator', 'CanonicalPermutationIterator'
 ]
 
