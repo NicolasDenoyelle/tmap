@@ -7,6 +7,11 @@ Python module to compute permutations and map them on trees
 pip install .
 ```
 
+## Test
+```
+python -m unittest tmap/permutation.py tmap/tree.py
+```
+
 ## Examples:
 
 ### Simple Permutations
