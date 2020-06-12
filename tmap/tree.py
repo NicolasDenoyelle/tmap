@@ -8,7 +8,7 @@
 ##############################################################################
 
 from random import randint
-from utils import concat, argmin, which, order, isindex
+from tmap.utils import concat, argmin, which, order, isindex
 
 class Tree:
     """

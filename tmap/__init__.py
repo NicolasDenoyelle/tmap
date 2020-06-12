@@ -9,9 +9,9 @@
 
 import subprocess
 
-from tree import Tree, Tleaf, TreeIterator, ScatterTreeIterator
-from permutation import Permutation, TreePermutation
-from topology import Topology
+from tmap.tree import Tree, Tleaf, TreeIterator, ScatterTreeIterator
+from tmap.permutation import Permutation, TreePermutation
+from tmap.topology import Topology
 
 all = [
     'Tree', 'TRandom', 'Tleaf', 'TreeIterator', 'ScatterTreeIterator',

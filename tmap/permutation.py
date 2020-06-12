@@ -9,8 +9,8 @@
 
 import sys
 from random import shuffle, randrange, randint
-from tree import Tree, Tleaf, TreeIterator
-from utils import isindex, which, factorial
+from tmap.tree import Tree, Tleaf, TreeIterator
+from tmap.utils import isindex, which, factorial
 
 class Permutation:
     """

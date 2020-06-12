@@ -7,8 +7,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 ##############################################################################
 
-from tree import Tree, TreeIterator
-from permutation import TreePermutation
+from tmap.tree import Tree, TreeIterator
+from tmap.permutation import TreePermutation
 from copy import deepcopy
 import subprocess
 import re
