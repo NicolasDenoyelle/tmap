@@ -13,6 +13,13 @@ from copy import deepcopy
 import subprocess
 import re
 
+hwloc_version=None
+s, out = subprocess.getstatusoutput('hwloc-info --version')
+if s == 0:
+    hwloc_version = re.match('.*(?P<i>\d[.]\d[.]\d).*',out)
+if hwloc_version is not None:
+    hwloc_version = [ int(i) for i in hwloc_version.group(1).split('.') ]
+
 class Topology(Tree):
     """
     Use hwloc-info and hwloc-calc command line utilities to
@@ -207,11 +214,12 @@ class Topology(Tree):
     def dup(self):
         return deepcopy(self)
 
-
 "Pre initialized current machine topology."
-topology = Topology()
-
-__all__ = ['topology', 'Topology']
+if hwloc_version is not None:
+    topology = Topology()
+    __all__ = ['hwloc_version', 'topology', 'Topology']
+else:
+    __all__ = ['hwloc_version', 'Topology']
 
 if __name__ == '__main__':
     t = Topology()

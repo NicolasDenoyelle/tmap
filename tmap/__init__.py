@@ -9,18 +9,17 @@
 
 import subprocess
 
-from tmap.tree import Tree, Tleaf, TreeIterator, ScatterTreeIterator
-from tmap.permutation import Permutation, TreePermutation
-from tmap.topology import Topology
+from tmap.tree import Tree, Trandom, Tleaf, TreeIterator, ScatterTreeIterator
+from tmap.permutation import Permutation, TreePermutation, PermutationIterator, CanonicalPermutationIterator
+from tmap.topology import hwloc_version
 
-all = [
-    'Tree', 'TRandom', 'Tleaf', 'TreeIterator', 'ScatterTreeIterator',
-    'Permutation', 'TreePermutation'
+__all__ = [
+    'Tree', 'Trandom', 'Tleaf', 'TreeIterator', 'ScatterTreeIterator',
+    'Permutation', 'TreePermutation',
     'PermutationIterator', 'CanonicalPermutationIterator'
 ]
 
-s, _ = subprocess.getstatusoutput('hwloc-info')
-if s == 0:
-    all.append('Topology')
-
-__all__ = all
+if hwloc_version is not None:
+    from tmap.topology import Topology, topology
+    __all__.append('Topology')
+    __all__.append('topology')
