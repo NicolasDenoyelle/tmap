@@ -386,7 +386,7 @@ class ScatterTreeIterator:
         ret = self._visit_node_(self.tree)
         return ret if self.cond(ret) else next(self)
 
-class TRandom(Tree):
+class Trandom(Tree):
     """
     Random tree generator
     """                
@@ -399,13 +399,13 @@ class TRandom(Tree):
             children = [ Tree() for i in range(rdgen(arity_min, arity_max)) ]
             self.connect_children(children)
             for c in children:
-                c.__class__ = TRandom
+                c.__class__ = Trandom
                 c.gen_children(arity_max, arity_min, depth_min-1, depth_max, rdgen)
         elif depth_max > 0:
             children = [ Tree() for i in range(rdgen(0, arity_max)) ]
             self.connect_children(children)
             for c in children:
-                c.__class__ = TRandom
+                c.__class__ = Trandom
                 c.gen_children(arity_max, arity_min, depth_min, depth_max-1, rdgen)
         
 class Tleaf(Tree):
@@ -429,7 +429,7 @@ class Tleaf(Tree):
         self.tag_leaves()
         self.arities = arities
 
-__all__ = ['Tree', 'Tleaf', 'TRandom', 'TreeIterator', 'ScatterTreeIterator']
+__all__ = ['Tree', 'Tleaf', 'Trandom', 'TreeIterator', 'ScatterTreeIterator']
 
 ################################################################################
 # Testing                                                                      #
@@ -440,7 +440,7 @@ import unittest
 class TestTree(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.trees = [ TRandom() for i in range(4) ]
+        cls.trees = [ Trandom() for i in range(4) ]
 
     def test_root(self):
         for tree in self.trees:
