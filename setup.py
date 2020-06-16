@@ -16,6 +16,6 @@ setup(name='tmap',
       author='Nicolas Denoyelle',
       author_email='denoyelle.nicolas@gmail.com',
       license='BSD-3-Clause',
-      packages=[''],
+      packages=['tmap'],
       zip_safe=False)
 
