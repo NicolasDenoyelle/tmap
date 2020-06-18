@@ -87,7 +87,7 @@ class Topology(Tree):
         
         cmd = 'hwloc-info'
         if input_topology is not None:
-            cmd += ' --input {}'.format(input_topology)
+            cmd += ' --input "{}"'.format(input_topology)
         cmd += ' --descendants {} {}:{}'.format(child_type, type,
                                                 logical_index)
         out = subprocess.getstatusoutput(cmd)
@@ -106,7 +106,7 @@ class Topology(Tree):
         
         cmd = 'hwloc-info'
         if input_topology is not None:
-            cmd += ' --input {}'.format(input_topology)
+            cmd += ' --input "{}"'.format(input_topology)
         cmd += ' {}:{}'.format(type, logical_index)
         out = subprocess.getstatusoutput(cmd)
         if out[0] != 0:
@@ -128,7 +128,7 @@ class Topology(Tree):
                            '[\s]+(?P<count>[-]?\d+)[\s]+(?P<type>\w+)')
         cmd = "hwloc-info"
         if input_topology is not None:
-            cmd += ' --input {}'.format(input_topology)
+            cmd += ' --input "{}"'.format(input_topology)
         if structure:
             cmd += ' --filter all:structure'
         if no_io:

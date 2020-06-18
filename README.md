@@ -96,18 +96,64 @@ print(equi) # 2:5:4:3:0:1
 print(equi.canonical() == p) # True
 ```
 
-### Map a permutation with this machine topology
+### Load a machine topology
 * This part will only be available if hwloc is installed on the system.
 
 ```
 from tmap import Topology
-t = Topology()
-p = TreePermutation(t)
+this_system_topology = Topology()
+print(this_system_topology)
+topology = Topology(input_topology='node:2 l3:1 pu:4')
+print(topology)
+```
+```
+    +------PU:0
+    |         
+    +------PU:1
+    |         
+    +------PU:2
+    |         
+    +------PU:3
++---L3Cache:0
+|      
+|   +------PU:4
+|   |         
+|   +------PU:5
+|   |         
+|   +------PU:6
+|   |         
+|   +------PU:7
++---L3Cache:1
 ```
 
-### Enumerate permutation one per subgroup of tree permutation:
+### Map a permutation with this machine topology
+
+```
+p = TreePermutation(topology)
+p
+```
+```
+[0, 1, 2, 3, 4, 5, 6, 7]
+```
+### Generate a random permutation by shuffling topology tree nodes
+
+```
+p.shuffled_equivalent()
+[7, 5, 6, 4, 2, 1, 3, 0]
+```
+L3s have been swapped and PUs inside L3s have been shuffled.
+
+### Enumerate canonical permutations of the topoloy tree:
+
 ```
 from tmap import CanonicalPermutationIterator
 for permutation in CanonicalPermutationIterator(p):
-		print(permutation)
+		print(permutation)		
+```
+```
+0:1:2:3:4:5:6:7
+0:1:2:4:3:5:6:7
+0:1:3:4:2:5:6:7
+0:2:3:4:1:5:6:7
+...
 ```
