@@ -46,23 +46,41 @@ print(s[0]) # 5
 * Build a Tleaf Tree:
 ```
 from tmap import Tleaf
-
 tree = Tleaf(arities=[2,3])
+print(tree)
+```
+
+```
+    +------[0, 0]
+    |         
+    +------[0, 1]
+    |         
+    +------[0, 2]
++---[0]
+|      
+|   +------[1, 0]
+|   |         
+|   +------[1, 1]
+|   |         
+|   +------[1, 2]
++---[1]
 ```
 
 * Trees are iterable:
 ```
 for node in tree:
-		print('depth:{}, arity:{}, coords:{!s}'.format(node.depth(), len(node.children), node.coords()))
-# depth:2, arity:0, coords:[0, 0]
-# depth:2, arity:0, coords:[0, 1]
-# depth:2, arity:0, coords:[0, 2]
-# depth:1, arity:3, coords:[0]
-# depth:2, arity:0, coords:[1, 0]
-# depth:2, arity:0, coords:[1, 1]
-# depth:2, arity:0, coords:[1, 2]
-# depth:1, arity:3, coords:[1]
-# depth:0, arity:2, coords:[]
+		print(node.coords)
+```
+```
+[0, 0]
+[0, 1]
+[0, 2]
+[0]
+[1, 0]
+[1, 1]
+[1, 2]
+[1]
+[]
 ```
 
 ### Map a Tree on a Permutation:
