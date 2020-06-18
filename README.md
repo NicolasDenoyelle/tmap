@@ -69,7 +69,7 @@ print(tree)
 * Trees are iterable:
 ```
 for node in tree:
-		print(node.coords)
+		print(node.coords())
 ```
 ```
 [0, 0]
