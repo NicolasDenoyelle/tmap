@@ -18,7 +18,7 @@ python -m unittest tmap/permutation.py tmap/tree.py
 
 * Create a permutation of n elements:
 ```
-from tmap import Permutation
+from tmap.permutation import Permutation
 
 p = Permutation(6)
 print(p) # '0:1:2:3:4:5'
@@ -45,7 +45,7 @@ print(s[0]) # 5
 
 * Build a Tleaf Tree:
 ```
-from tmap import Tleaf
+from tmap.tree import Tleaf
 tree = Tleaf(arities=[2,3])
 print(tree)
 ```
@@ -85,7 +85,7 @@ for node in tree:
 
 ### Map a Tree on a Permutation:
 ```
-from tmap import TreePermutation
+from tmap.permutation import TreePermutation
 p = TreePermutation(tree, s.id())
 print(p) #5:3:4:1:0:2
 ```
@@ -118,7 +118,7 @@ print(equi.canonical() == p) # True
 * This part will only be available if hwloc is installed on the system.
 
 ```
-from tmap import Topology
+from tmap.topology import Topology
 this_system_topology = Topology()
 print(this_system_topology)
 topology = Topology(input_topology='node:2 l3:1 pu:4')
@@ -164,7 +164,7 @@ L3s have been swapped and PUs inside L3s have been shuffled.
 ### Enumerate Canonical Permutations of the Topology Tree:
 
 ```
-from tmap import CanonicalPermutationIterator
+from tmap.permutation import CanonicalPermutationIterator
 for permutation in CanonicalPermutationIterator(p):
 		print(permutation)		
 ```
