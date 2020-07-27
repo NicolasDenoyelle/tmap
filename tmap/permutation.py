@@ -8,7 +8,7 @@
 ##############################################################################
 
 import sys
-from random import shuffle, randrange, randint
+from random import shuffle, randint
 from tmap.tree import Tree, Tleaf, TreeIterator
 from tmap.utils import isindex, which, factorial
 
