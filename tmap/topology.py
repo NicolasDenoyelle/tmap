@@ -211,6 +211,14 @@ class Topology(Tree):
             return self.restrict(next_indexes, next_type)
         return self
 
+    def singlify(self, level = "Machine"):
+        nodes = [ n for n in self if n.type == level ]
+        def singlify_node(node):
+            if len(node.children) > 0:
+                node.children = [node.children[0]]
+        for node in nodes:
+            node.apply(singlify_node)
+
     def dup(self):
         return deepcopy(self)
 
