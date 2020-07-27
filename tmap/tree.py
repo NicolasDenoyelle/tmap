@@ -102,13 +102,13 @@ class Tree:
         """
         return len(self.children) == 0
 
-    def depth(self) -> int:
+    def get_depth(self) -> int:
         """
         Compute recursively this node leaf
         """
         if self.parent is None:
             return 0
-        return 1 + self.parent.depth()
+        return 1 + self.parent.get_depth()
 
     def arity(self):
         """
@@ -121,7 +121,7 @@ class Tree:
         Compute recursively maximum distance to a leaf from this node
         """
         return max(
-            [l.depth() for l in TreeIterator(self, lambda n: n.is_leaf())])
+            [l.get_depth() for l in TreeIterator(self, lambda n: n.is_leaf())])
 
     def __getitem__(self, coords: list):
         """
@@ -460,7 +460,7 @@ class TestTree(unittest.TestCase):
         for tree in self.trees:
             depth = tree.max_depth()
             for node in tree:
-                node_depth = node.depth()
+                node_depth = node.get_depth()
                 self.assertTrue(node_depth <= depth)
                 for i in range(node_depth):
                     self.assertTrue(node.parent is not None)
@@ -471,7 +471,7 @@ class TestTree(unittest.TestCase):
             for i in range(tree.max_depth()):
                 level = tree.level(i)
                 for l in level:
-                    self.assertEqual(l.depth(), i)
+                    self.assertEqual(l.get_depth(), i)
 
     def test_reduce(self):
         for tree in self.trees:

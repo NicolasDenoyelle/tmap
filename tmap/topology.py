@@ -9,9 +9,10 @@
 
 from tmap.tree import Tree, TreeIterator
 from tmap.permutation import TreePermutation
-from copy import deepcopy
+from xml.etree import ElementTree
 import subprocess
 import re
+from copy import deepcopy
 
 hwloc_version=None
 s, out = subprocess.getstatusoutput('hwloc-info --version')
@@ -22,130 +23,33 @@ if hwloc_version is not None:
 
 class Topology(Tree):
     """
-    Use hwloc-info and hwloc-calc command line utilities to
-    create a Tree based on a machine topology.
+    Use lstopo command line utility to generate topology xml then parse xml to build a topology.
     """
 
-    type_re = re.compile('^\stype\s=\s(?P<i>\w+)$')
-    lindex_re = re.compile('^\slogical\sindex\s=\s(?P<i>\d+)$')
-    osindex_re = re.compile('^\sos\sindex\s=\s(?P<i>\d+)$')
-    memchild_re = re.compile('^\smemory\schildren\s=\s(?P<i>\d+)$')
-    cpuset_re = re.compile('^\scpuset\s=\s(?P<i>(\w+,?)+)$')
-    nodeset_re = re.compile('^\snodeset\s=\s(?P<i>\w+)$')
-
     @staticmethod
-    def parse_obj_info(info: str):
-        """
-        Parse output of 'hwloc-info obj' into a Tree node with attributes:
-        logical_index, os_index, cpuset, nodeset, type and memory_children.
-        """
-        logical_index = None
-        memory_children = None,
-        os_index = None
-        type = None
-        cpuset = None
-        nodeset = None
-        for line in info.split('\n'):
-            match = Topology.type_re.match(line)
-            if match is not None:
-                type = match.group(1)
-            match = Topology.cpuset_re.match(line)
-            if match is not None:
-                cpuset = match.group(1)
-            match = Topology.type_re.match(line)
-            if match is not None:
-                nodeset = match.group(1)
-            match = Topology.lindex_re.match(line)
-            if match is not None:
-                logical_index = int(match.group(1))
-            match = Topology.osindex_re.match(line)
-            if match is not None:
-                os_index = int(match.group(1))
-            match = Topology.memchild_re.match(line)
-            if match is not None:
-                memory_children = int(match.group(1))
-
-        node = Tree(logical_index=logical_index,
-                    memory_children=memory_children,
-                    os_index=os_index,
-                    type=type,
-                    cpuset=cpuset,
-                    nodeset=nodeset)
-        node.__class__ = Topology
+    def make_node(xml_node, node=None):
+        if node is None:
+            node = Tree()
+        for k,v in xml_node.attrib.items():
+            try:
+                node.__dict__[k] = int(v)
+            except ValueError:
+                node.__dict__[k] = v
+        node.special_children = []
+        if node.__class__ is Tree:
+            node.__class__ = Topology
         return node
 
-    @staticmethod
-    def get_children(type: str,
-                     logical_index: int,
-                     child_type: str,
-                     input_topology=None):
-        """
-        Retrieve the list of children of type @child_type of a topology
-        object of a certain type @type and index @logical_index.
-        @return [ Topology ] nodes
-        """
-        
-        cmd = 'hwloc-info'
-        if input_topology is not None:
-            cmd += ' --input "{}"'.format(input_topology)
-        cmd += ' --descendants {} {}:{}'.format(child_type, type,
-                                                logical_index)
-        out = subprocess.getstatusoutput(cmd)
-        if out[0] != 0:
-            raise ValueError('Invalid topology file')
-        elements = re.split('\n\w+.*\n', out[1])
-        return [ Topology.parse_obj_info(e) for e in elements ]
-
-    @staticmethod
-    def get_node(type: str, logical_index: int, input_topology=None):
-        """
-        Invoke hwloc-info and parse output to collect some attributes 
-        of a topology object.
-        @return Topology node
-        """
-        
-        cmd = 'hwloc-info'
-        if input_topology is not None:
-            cmd += ' --input "{}"'.format(input_topology)
-        cmd += ' {}:{}'.format(type, logical_index)
-        out = subprocess.getstatusoutput(cmd)
-        if out[0] != 0:
-            raise ValueError('Invalid topology file')
-        return Topology.parse_obj_info(out[1])
-
-    @staticmethod    
-    def objects(structure: bool, no_io: bool, input_topology=None):
-        """
-        Invoke 'hwloc-info' to retrieve a list of objects in the topology with 
-        their type, count and depth.
-        If structure is True, topology is filtered to keep objects important for 
-        the structure.
-        If no_io is True, io objects are filtered.
-        @return [ dict ] sorted by 'depth' key.
-        """
-
-        regex = re.compile('(Special\s)?depth\s(?P<depth>\-?\d+):' +
-                           '[\s]+(?P<count>[-]?\d+)[\s]+(?P<type>\w+)')
-        cmd = "hwloc-info"
-        if input_topology is not None:
-            cmd += ' --input "{}"'.format(input_topology)
-        if structure:
-            cmd += ' --filter all:structure'
-        if no_io:
-            cmd += ' --no-io'
-
-        output = subprocess.getstatusoutput(cmd)
-        if output[0] != 0:
-            raise ValueError('Invalid topology file')
-        output = output[1].split('\n')
-
-        objects = [regex.match(i.strip()) for i in output]
-        objects = [i.groupdict() for i in objects if i is not None]
-        for o in objects:
-            o['depth'] = int(o['depth'])
-            o['count'] = int(o['count'])
-        objects.sort(key=lambda i: i['depth'])
-        return objects
+    def connect_children_xml(self, xml_node):
+        self.children = []
+        for child in xml_node.getchildren():
+            node = Topology.make_node(child)
+            node.parent = self
+            if hasattr(node, 'cpuset') and not hasattr(node, 'local_memory'):
+                self.children.append(node)
+                node.connect_children_xml(child)
+            else:
+                self.special_children.append(node)
 
     def __init__(self, structure=True, no_io=True, input_topology=None):
         """
@@ -155,34 +59,30 @@ class Topology(Tree):
         If no_io is True, io objects are filtered.
         """
         
-        self.input_topology = input_topology
-        objects = Topology.objects(structure, no_io, input_topology)
+        cmd = 'lstopo --of xml'
+        if input_topology is not None:
+            cmd += ' --input "{}"'.format(input_topology)
+        if structure:
+            cmd += ' --filter all:structure'
+        if no_io:
+            cmd += ' --no-io'
+        xml_tree = ElementTree.fromstring(subprocess.getoutput(cmd))
 
-        node = Topology.get_node('Machine', 0, input_topology)
 
         # Initialize root
-        super().__init__(logical_index=node.logical_index,
-                         memory_children=node.memory_children,
-                         os_index=node.os_index,
-                         type=node.type,
-                         cpuset=node.cpuset,
-                         nodeset=node.nodeset)
+        root = xml_tree.getchildren()[0]
+        super().__init__(logical_index=0)
+        Topology.make_node(root, self)
 
-        self.special_objs = [{'depth': o['depth'],
-                              'type': o['type'],
-                              'count': o['count'], }
-                             for o in objects if o['depth'] < 0]
+        # Connect childrens recursively
+        self.connect_children_xml(root)
 
-        # Connect nodes
-        for o in [o for o in objects[:len(objects)] if o['depth'] > 0]:
-            for leaf in TreeIterator(self, lambda n: n.is_leaf()):
-                children = Topology.get_children(leaf.type, leaf.logical_index,
-                                                 o['type'], input_topology)
-                leaf.connect_children(children)
-
-        # Store a list of child PU in all nodes
-        for n in self:
-            n.PUs = [i for i in TreeIterator(n, lambda x: x.is_leaf())]
+        # Set logical indexes:
+        types = set([ n.type for n in self ])
+        for t in types:
+            nodes = [ n for n in self if n.type == t ]
+            for n, i in zip(nodes, range(len(nodes))):
+                n.logical_index = i
 
     def __repr__(self):
         return '{}:{}'.format(self.type, self.logical_index)
