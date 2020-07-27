@@ -84,6 +84,13 @@ class Topology(Tree):
             for n, i in zip(nodes, range(len(nodes))):
                 n.logical_index = i
 
+        # Set list of child PUs:
+        for n in self:
+            n.PUs = []
+            for PU in n:
+                if PU.is_leaf():
+                    n.PUs.append(PU)
+
     def __repr__(self):
         return '{}:{}'.format(self.type, self.logical_index)
 
