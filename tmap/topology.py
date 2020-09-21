@@ -12,6 +12,7 @@ from tmap.permutation import TreePermutation
 from xml.etree import ElementTree
 import subprocess
 import re
+import os
 from copy import deepcopy
 
 hwloc_version=None
@@ -61,7 +62,10 @@ class Topology(Tree):
         
         cmd = 'lstopo --of xml'
         if input_topology is not None:
-            cmd += ' --input "{}"'.format(input_topology)
+            if os.path.isfile(os.path.expanduser(input_topology)):
+                cmd += ' --input {}'.format(input_topology)
+            else:
+                cmd += ' --input "{}"'.format(input_topology)
         if structure:
             cmd += ' --filter all:structure'
         if no_io:
