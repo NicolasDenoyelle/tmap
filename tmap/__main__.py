@@ -57,4 +57,4 @@ if args.symmetry:
 if args.format == 'id':
     print(permutation.id())
 if args.format == 'list':
-    print([ str(i) for i in permutation.elements ].join(' '))
+    print(' '.join([ str(i) for i in permutation.elements ]))
