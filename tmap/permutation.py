@@ -8,6 +8,7 @@
 ##############################################################################
 
 import sys
+from copy import deepcopy
 from random import shuffle, randint
 from tmap.tree import Tree, Tleaf, TreeIterator
 from tmap.utils import isindex, which, factorial
@@ -24,12 +25,22 @@ class Permutation:
           If id is 0: the list of elements is initialized as a range.
           Else, the elements are permuted according to id. 
           Permutation(n, id).id() == id.
-        * @n: A string "i:j:k:..." of a complete list of integer , 
-        if type(n) is str
-        * @n: A list [i:j:k:...] of a complete list of integer , 
+        * @n: A list [i:j:k:...] of a complete list of integer ,
         if type(n) is list.
+        * @id: A big int representing the permutation id.
+        * @id: A string "P\x1a\n+õûáö\x83ïo%&U\x8b[5´d" representing the permutation hash.
         """
 
+        # Make sure id is an integer.
+        if isinstance(id, str):
+            i = 0
+            for b in bytes(id, "latin1"):
+                i = i << 8
+                i = i | b
+            id = i
+        if not isinstance(id, int):
+            raise ValueError("Expected 'int' of 'str' for id.")
+        
         if isinstance(n, int):
             self.max_id = factorial(n)
             id = id % self.max_id
@@ -46,9 +57,6 @@ class Permutation:
             self.elements = n.elements.copy()
             self.max_id = factorial(len(self.elements))
             return
-        if isinstance(n, str):
-            n = [int(i) for i in n.split(':')]
-            self.max_id = factorial(len(n))
         if isinstance(n, list):
             if not isindex(n):
                 raise ValueError(
@@ -76,7 +84,12 @@ class Permutation:
         return ret
 
     def __hash__(self):
-        return self.id()
+        n = self.id()
+        b = []
+        while n:
+            b.append(n & 0xff)
+            n = n >> 8
+        return bytearray(b).decode("latin1")
 
     def __iter__(self):
         return iter(self.elements)
@@ -125,7 +138,7 @@ class Permutation:
         Shuffle permutation elements.
         """
 
-        ret = Permutation(len(self))
+        ret = deepcopy(self)
         shuffle(ret.elements)
         return ret
 
