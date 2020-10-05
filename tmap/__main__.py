@@ -18,7 +18,10 @@ parser.add_argument('-p', '--permutation', default = "0",
                     'If it is an integer it is used as the permutation id.'\
                     'If it is a string it is considered to be an index which items '\
                     'are seperated with "seperator".')
-parser.add_argument('--separator', type=str, default = ' ',
+parser.add_argument('-if', '--input-file', type=str,
+                    help='An input file with one permutation per line in the format'\
+                    'allowed by "-p" option.')
+parser.add_argument('-sep', '--separator', type=str, default = ' ',
                     help='Separator to use when input permutation is a list of index'\
                     'or when output format is a list.')
 parser.add_argument('-r', '--random', default = False, action='store_true',
@@ -34,7 +37,7 @@ parser.add_argument('-c', '--canonical', action='store_true', default=False,
 parser.add_argument('-s', '--symmetry', action='store_true', default=False,
                     help='Input permutation is shuffled by shuffling tree nodes.'\
                     'This option is processed after "canonical"xs option.')
-parser.add_argument('-f', '--format', type=str, choices = ['id', 'list'], default = 'id',
+parser.add_argument('-of', '--output-format', type=str, choices = ['id', 'list'], default = 'id',
                     help='Output format')
 args = parser.parse_args()
 
@@ -50,37 +53,45 @@ if args.topology is not None:
     else:
         args.n = n
 
-# Parse input permutation. If list, check its length is valid()
-try:
-    args.permutation = int(args.permutation)
-except ValueError:
-    args.permutation = Permutation([ int(i) for i in args.permutation.split(args.separator)])
-    if args.n is None:
-        args.n = len(args.permutation)
-    if len(args.permutation) != args.n:
-        raise ValueError('Expected input permutation length ({})'\
-                         'do not match permutation length({}).'.format(args,n,
-                                                                       len(args.permutation)))
-    args.permutation = Permutation(args.permutation).id()
-if args.topology is not None:
-    permutation = TreePermutation(args.topology, args.permutation)
+def do_permutation(permutation):
+    # Parse input permutation. If list, check its length is valid()
+    try:
+        permutation = int(permutation)
+    except ValueError:
+        permutation = Permutation([ int(i) for i in permutation.split(args.separator)])
+        if args.n is None:
+            args.n = len(permutation)
+        if len(permutation) != args.n:
+            raise ValueError('Expected input permutation length ({})'\
+                             'do not match permutation length({}).'.format(args,n,
+                                                                           len(permutation)))
+        permutation = Permutation(permutation).id()
+    if args.topology is not None:
+        permutation = TreePermutation(args.topology, permutation)
+    else:
+        permutation = Permutation(args.n, permutation)
+
+    # Process input permutation
+    if args.canonical and args.topology is None:
+        raise ValueError('Canonical permutations require a tree topology.')
+    if args.symmetry and args.topology is None:
+        raise ValueError('Symmetric permutations require a tree topology.')
+    if args.random:
+        permutation = permutation.shuffled()
+    if args.canonical:
+        permutation = permutation.canonical()
+    if args.symmetry:
+        permutation = permutation.shuffled_equivalent()
+
+    # Output permutation
+    if args.output_format == 'id':
+        print(str(permutation.id()))
+    if args.output_format == 'list':
+        print(args.separator.join([ str(i) for i in permutation.elements ]))
+
+if args.input_file is None:
+    do_permutation(args.permutation)
 else:
-    permutation = Permutation(args.n, args.permutation)
-
-# Process input permutation
-if args.canonical and args.topology is None:
-    raise ValueError('Canonical permutations require a tree topology.')
-if args.symmetry and args.topology is None:
-    raise ValueError('Symmetric permutations require a tree topology.')
-if args.random:
-    permutation = permutation.shuffled()
-if args.canonical:
-    permutation = permutation.canonical()
-if args.symmetry:
-    permutation = permutation.shuffled_equivalent()
-
-# Output permutation
-if args.format == 'id':
-    print(str(permutation.id()))
-if args.format == 'list':
-    print(args.separator.join([ str(i) for i in permutation.elements ]))
+    with open(args.input_file) as f:
+        for l in f.readlines():
+            do_permutation(l)
