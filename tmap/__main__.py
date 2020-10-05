@@ -13,13 +13,21 @@ from tmap.topology import Topology
 parser = argparse.ArgumentParser()
 parser.add_argument('-n', type=int,
                     help='The number of elements in the permutation.')
-parser.add_argument('-p', '--permutation', type=int, default = 0,
-                    help='Input permutation id')
+parser.add_argument('-p', '--permutation', default = "0",
+                    help='Input permutation.'\
+                    'If it is an integer it is used as the permutation id.'\
+                    'If it is a string it is considered to be an index which items '\
+                    'are seperated with "seperator".')
+parser.add_argument('--separator', type=str, default = ' ',
+                    help='Separator to use when input permutation is a list of index'\
+                    'or when output format is a list.')
 parser.add_argument('-r', '--random', default = False, action='store_true',
                     help='Shuffle input permutation.')
 parser.add_argument('-t', '--topology', type=str,
                     help='Use a hwloc topology, xml or synthetic string, as'\
                     'a tree to map on permutation.')
+parser.add_argument('--topology-leaf', type=str, default='Core',
+                    help='Prune topology below object type.')
 parser.add_argument('-c', '--canonical', action='store_true', default=False,
                     help='Input permutation is turned into its canonical representation.'\
                     'This option is processed after "random" option.')
@@ -30,21 +38,40 @@ parser.add_argument('-f', '--format', type=str, choices = ['id', 'list'], defaul
                     help='Output format')
 args = parser.parse_args()
 
-# Checking invalid input
-if args.n is None and args.topology is None:
-    raise ValueError('Either "n" or "topology" option must be set.')
+# Make topology if possible and check input permutation length is valid.
+if args.topology is not None:
+    args.topology = Topology(input_topology=args.topology)
+    args.topology.singlify(args.topology_leaf)
+    n = len([ n for n in args.topology if n.is_leaf()])
+
+    if args.n is not None and args.n != n:
+        raise ValueError('The number of tree leaves ({}) and '\
+                         'input permutation length ({}) do not match'.format(args.n, n))
+    else:
+        args.n = n
+
+# Parse input permutation. If list, check its length is valid()
+try:
+    args.permutation = int(args.permutation)
+except ValueError:
+    args.permutation = Permutation([ int(i) for i in args.permutation.split(args.separator)])
+    if args.n is None:
+        args.n = len(args.permutation)
+    if len(args.permutation) != args.n:
+        raise ValueError('Expected input permutation length ({})'\
+                         'do not match permutation length({}).'.format(args,n,
+                                                                       len(args.permutation)))
+    args.permutation = Permutation(args.permutation).id()
+if args.topology is not None:
+    permutation = TreePermutation(args.topology, args.permutation)
+else:
+    permutation = Permutation(args.n, args.permutation)
+
+# Process input permutation
 if args.canonical and args.topology is None:
     raise ValueError('Canonical permutations require a tree topology.')
 if args.symmetry and args.topology is None:
     raise ValueError('Symmetric permutations require a tree topology.')
-
-# Build permutation
-if args.topology:
-    permutation = TreePermutation(Topology(input_topology=args.topology), int(args.permutation))
-else:
-    permutation = Permutation(args.n, int(args.permutation))
-
-# Process input permutation
 if args.random:
     permutation = permutation.shuffled()
 if args.canonical:
@@ -56,4 +83,4 @@ if args.symmetry:
 if args.format == 'id':
     print(str(permutation.id()))
 if args.format == 'list':
-    print(' '.join([ str(i) for i in permutation.elements ]))
+    print(args.separator.join([ str(i) for i in permutation.elements ]))
