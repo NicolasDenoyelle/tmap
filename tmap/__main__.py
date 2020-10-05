@@ -40,9 +40,9 @@ if args.symmetry and args.topology is None:
 
 # Build permutation
 if args.topology:
-    permutation = TreePermutation(Topology(args.topology), args.permutation)
+    permutation = TreePermutation(Topology(input_topology=args.topology), int(args.permutation))
 else:
-    permutation = Permutation(args.n)
+    permutation = Permutation(args.n, int(args.permutation))
 
 # Process input permutation
 if args.random:
@@ -53,8 +53,7 @@ if args.symmetry:
     permutation = permutation.shuffled_equivalent()
 
 # Output permutation
-
 if args.format == 'id':
-    print(permutation.id())
+    print(str(permutation.id()))
 if args.format == 'list':
     print(' '.join([ str(i) for i in permutation.elements ]))
