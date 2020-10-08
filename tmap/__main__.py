@@ -41,6 +41,12 @@ parser.add_argument('-of', '--output-format', type=str, choices = ['id', 'list']
                     help='Output format')
 args = parser.parse_args()
 
+# Check args
+if args.canonical and args.topology is None:
+    raise ValueError('Canonical permutations require a tree topology.')
+if args.symmetry and args.topology is None:
+    raise ValueError('Symmetric permutations require a tree topology.')
+
 # Make topology if possible and check input permutation length is valid.
 if args.topology is not None:
     args.topology = Topology(input_topology=args.topology)
@@ -63,7 +69,7 @@ def do_permutation(permutation):
             args.n = len(permutation)
         if len(permutation) != args.n:
             raise ValueError('Expected input permutation length ({})'\
-                             'do not match permutation length({}).'.format(args,n,
+                             'do not match permutation length({}).'.format(args.n,
                                                                            len(permutation)))
         permutation = Permutation(permutation).id()
     if args.topology is not None:
@@ -71,11 +77,6 @@ def do_permutation(permutation):
     else:
         permutation = Permutation(args.n, permutation)
 
-    # Process input permutation
-    if args.canonical and args.topology is None:
-        raise ValueError('Canonical permutations require a tree topology.')
-    if args.symmetry and args.topology is None:
-        raise ValueError('Symmetric permutations require a tree topology.')
     if args.random:
         permutation = permutation.shuffled()
     if args.canonical:
