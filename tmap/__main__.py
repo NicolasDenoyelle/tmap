@@ -65,17 +65,17 @@ def do_permutation(permutation):
         permutation = int(permutation)
     except ValueError:
         permutation = Permutation([ int(i) for i in permutation.split(args.separator)])
-        if args.n is None:
-            args.n = len(permutation)
-        if len(permutation) != args.n:
+        if args.n is not None and len(permutation) != args.n:
             raise ValueError('Expected input permutation length ({})'\
                              'do not match permutation length({}).'.format(args.n,
                                                                            len(permutation)))
-        permutation = Permutation(permutation).id()
+        pid = Permutation(permutation).id()
     if args.topology is not None:
-        permutation = TreePermutation(args.topology, permutation)
+        permutation = TreePermutation(args.topology, pid)
+    elif args.n is not None:
+        permutation = Permutation(args.n, pid)
     else:
-        permutation = Permutation(args.n, permutation)
+        permutation = Permutation(permutation)
 
     if args.random:
         permutation = permutation.shuffled()
