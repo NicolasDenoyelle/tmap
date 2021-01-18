@@ -49,7 +49,10 @@ if args.symmetry and args.topology is None:
 
 # Make topology if possible and check input permutation length is valid.
 if args.topology is not None:
-    args.topology = Topology(input_topology=args.topology)
+    if len(args.topology) < 2:
+        args.topology = Topology()        
+    else:
+        args.topology = Topology(input_topology=args.topology)
     args.topology.singlify(args.topology_leaf)
     n = len([ n for n in args.topology if n.is_leaf()])
 
