@@ -72,17 +72,18 @@ class Topology(Tree):
             cmd += ' --no-io'
         root = ElementTree.fromstring(subprocess.getoutput(cmd))
 
+        while 'type' not in root.keys():
+            children = root.getchildren()
+            if len(children) > 1:
+                break
+            root = children[0]
 
         # Initialize root
-        # root = root.getchildren()[0]
         super().__init__(logical_index=0)
         Topology.make_node(root, self)
         # Connect childrens recursively
         self.connect_children_xml(root)
-
-        while self.arity() == 1 and not hasattr(self, 'type'):
-            self = self.children[0]
-
+        
         # Set logical indexes:
         types = set([ n.type for n in self ])
         for t in types:
