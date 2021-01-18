@@ -62,7 +62,7 @@ if args.topology is not None:
 def do_permutation(permutation):
     # Parse input permutation. If list, check its length is valid()
     try:
-        permutation = int(permutation)
+        pid = int(permutation)
     except ValueError:
         permutation = Permutation([ int(i) for i in permutation.split(args.separator)])
         if args.n is not None and len(permutation) != args.n:

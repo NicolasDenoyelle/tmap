@@ -70,16 +70,18 @@ class Topology(Tree):
             cmd += ' --filter all:structure'
         if no_io:
             cmd += ' --no-io'
-        xml_tree = ElementTree.fromstring(subprocess.getoutput(cmd))
+        root = ElementTree.fromstring(subprocess.getoutput(cmd))
 
 
         # Initialize root
-        root = xml_tree.getchildren()[0]
+        # root = root.getchildren()[0]
         super().__init__(logical_index=0)
         Topology.make_node(root, self)
-
         # Connect childrens recursively
         self.connect_children_xml(root)
+
+        while self.arity() == 1 and not hasattr(self, 'type'):
+            self = self.children[0]
 
         # Set logical indexes:
         types = set([ n.type for n in self ])

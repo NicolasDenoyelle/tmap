@@ -34,6 +34,6 @@ def factorial(n):
     """
     Dumb recursive factorial computation
     """
-    return n if n == 1 else n * factorial(n - 1)
+    return reduce(lambda x, y: x*y, range(1, n+1))
 
 __all__ = [ 'unlist', 'argmin', 'which', 'order', 'isindex', 'factorial' ]
