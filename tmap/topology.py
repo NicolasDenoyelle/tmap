@@ -31,6 +31,7 @@ class Topology(Tree):
     def make_node(xml_node, node=None):
         if node is None:
             node = Tree()
+        node.attrib = xml_node.attrib
         for k,v in xml_node.attrib.items():
             try:
                 node.__dict__[k] = int(v)
@@ -69,15 +70,8 @@ class Topology(Tree):
         if structure:
             cmd += ' --filter all:structure'
         if no_io:
-            cmd += ' --no-io'
+            cmd += ' --no-io'            
         root = ElementTree.fromstring(subprocess.getoutput(cmd))
-
-        while 'type' not in root.keys():
-            children = root.getchildren()
-            if len(children) > 1:
-                break
-            root = children[0]
-
         # Initialize root
         super().__init__(logical_index=0)
         Topology.make_node(root, self)
@@ -85,9 +79,9 @@ class Topology(Tree):
         self.connect_children_xml(root)
         
         # Set logical indexes:
-        types = set([ n.type for n in self ])
+        types = set([ n.type for n in self if hasattr(n, 'type') ])
         for t in types:
-            nodes = [ n for n in self if n.type == t ]
+            nodes = [ n for n in self if hasattr(n, 'type') and n.type == t ]
             for n, i in zip(nodes, range(len(nodes))):
                 n.logical_index = i
 
@@ -99,7 +93,10 @@ class Topology(Tree):
                     n.PUs.append(PU)
 
     def __repr__(self):
-        return '{}:{}'.format(self.type, self.logical_index)
+        if hasattr(self, 'type'):
+            return '{}:{}'.format(self.type, self.logical_index)
+        else:
+            return '{}:{}'.format(next(iter(self.attrib)))
 
     def get_nbobjs_by_type(self, type: str):
         return len(self.select(lambda n: n.type == type))
@@ -114,7 +111,7 @@ class Topology(Tree):
     def restrict(self, indexes: list, type: str):
         # Prune nodes in index.
         eliminated = self.prune(
-            lambda n: n.type == type and n.logical_index not in indexes)
+            lambda n: hasattr(n, 'type') and n.type == type and n.logical_index not in indexes)
         elimination = [e.parent for e in eliminated if e.parent.arity() == 0]
         if len(elimination) > 0:
             next_type = next(iter(elimination)).type
@@ -126,7 +123,7 @@ class Topology(Tree):
         return self
 
     def singlify(self, level = "Machine"):
-        nodes = [ n for n in self if n.type == level ]
+        nodes = [ n for n in self if hasattr(n, 'type') and n.type == level ]
         def singlify_node(node):
             if len(node.children) > 0:
                 node.children = [node.children[0]]
