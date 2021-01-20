@@ -84,12 +84,7 @@ class Permutation:
         return ret
 
     def __hash__(self):
-        n = self.id()
-        b = []
-        while n:
-            b.append(n & 0xff)
-            n = n >> 8
-        return bytearray(b).decode("latin1")
+        return self.id()
 
     def __iter__(self):
         return iter(self.elements)
