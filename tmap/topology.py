@@ -80,12 +80,9 @@ class Topology(Tree):
 
         # Connect childrens recursively
         self.connect_children_xml(root)
-
-        # Remove nodes with no cpuset.
+            
         if cpuset_only:
-            self.prune(lambda n: (not n.is_root()) and \
-                       ('cpuset' not in n.__dict__.keys() or \
-                        all([ len(c) == 0 or int(c, 16) == 0 for c in n.cpuset.split(',')])))
+            self.prune(lambda n: not n.has_cpuset())
 
         # Set logical indexes:
         types = set([ n.type for n in self if hasattr(n, 'type') ])
@@ -106,6 +103,14 @@ class Topology(Tree):
                 return '{}:{}'.format(self.type, self.logical_index)
         else:
             return '{}'.format(self.tag)
+
+    # Remove nodes with no cpuset.
+    def has_cpuset(self):
+        if hasattr(self, 'type') and self.type == 'PU':
+            return True
+            
+        ## If no child has cpuset, then this has no cpuset.
+        return next((True for c in self.children if c.has_cpuset()), False)
 
     def get_nbobjs_by_type(self, type: str):
         return len(self.select(lambda n: hasattr(self, 'type') and n.type == type))
