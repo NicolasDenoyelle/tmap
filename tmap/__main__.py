@@ -36,8 +36,8 @@ parser.add_argument('-c', '--canonical', action='store_true', default=False,
                     'This option is processed after "random" option.')
 parser.add_argument('-s', '--symmetry', action='store_true', default=False,
                     help='Input permutation is shuffled by shuffling tree nodes.'\
-                    'This option is processed after "canonical"xs option.')
-parser.add_argument('-of', '--output-format', type=str, choices = ['id', 'list'], default = 'id',
+                    'This option is processed after "canonical" option.')
+parser.add_argument('-of', '--output-format', type=str, choices = ['id', 'list', 'topology'], default = 'id',
                     help='Output format')
 args = parser.parse_args()
 
@@ -55,6 +55,9 @@ if args.topology is not None:
         args.topology = Topology(input_topology=args.topology)
     args.topology.singlify(args.topology_leaf)
     n = len([ n for n in args.topology if n.is_leaf()])
+else:
+    if args.output_format == 'topology':
+        raise ValueError('Output format can only be a topology if a topology is used as input.')
 
     if args.n is not None and args.n != n:
         raise ValueError('The number of tree leaves ({}) and '\
@@ -81,16 +84,19 @@ def do_permutation(permutation):
         permutation = Permutation(permutation)
 
     if args.random:
-        permutation = permutation.shuffled()
-    if args.canonical:
-        permutation = permutation.canonical()
+        permutation.shuffle()
     if args.symmetry:
-        permutation = permutation.shuffled_equivalent()
+        permutation.shuffle_nodes()
+    if args.canonical:
+        permutation.canonical()
 
     # Output permutation
     if args.output_format == 'id':
         print(str(permutation.id()))
     if args.output_format == 'list':
+        print(args.separator.join([ str(i) for i in permutation.elements ]))
+    if args.output_format == 'topology':
+        print(str(permutation.tree))
         print(args.separator.join([ str(i) for i in permutation.elements ]))
 
 if args.input_file is None:

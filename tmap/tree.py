@@ -8,7 +8,7 @@
 ##############################################################################
 
 from random import randint
-from tmap.utils import concat, argmin, which, order, isindex
+from tmap.utils import concat, which, isindex
 
 class Tree:
     """
@@ -175,17 +175,6 @@ class Tree:
             return self
         return self.parent.root()
 
-    def tag_leaves(self):
-        """
-        Add an attribute "tag" to the leaves of this node containing the leaf index
-        in a round-robin order.
-        """
-
-        i = 0
-        for l in TreeIterator(self, lambda n: n.is_leaf()):
-            l.tag = i
-            i += 1
-
     def level(self, i: int) -> list:
         """
         Get all nodes at depth @i from this node.
@@ -236,21 +225,6 @@ class Tree:
         if self.is_leaf():
             return self
         return self.children[0].first_leaf()
-
-    def sort(self, by=lambda leaf: leaf.tag):
-        """
-        Recursively sort tree nodes based on a leaf condition.
-        """
-        
-        # For every children get min leaf by tag
-        mins = [by(c.reduce(lambda nodes:
-                            nodes[argmin([by(node) for node in nodes])]))
-                for c in self.children]
-        # Reorder children by min leaf
-        self.swap(order(mins))
-        # Run recursively on children
-        for c in self.children:
-            c.sort()
 
     def prune(self, cond=lambda n: True):
         """
@@ -426,7 +400,6 @@ class Tleaf(Tree):
                 [Tleaf(arities[1:]) for i in range(arities[0])])
         elif len(arities) == 1:
             self.connect_children([Tleaf([]) for i in range(arities[0])])
-        self.tag_leaves()
         self.arities = arities
 
 __all__ = ['Tree', 'Tleaf', 'Trandom', 'TreeIterator', 'ScatterTreeIterator']
