@@ -81,7 +81,7 @@ class Topology(Tree):
         # Connect childrens recursively
         self.connect_children_xml(root)
 
-        # Remove nodes with no cpuset
+        # Remove nodes with no cpuset.
         if cpuset_only:
             self.prune(lambda n: (not n.is_root()) and \
                        ('cpuset' not in n.__dict__.keys() or \

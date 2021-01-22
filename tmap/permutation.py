@@ -11,7 +11,7 @@ import sys
 from copy import deepcopy
 from random import shuffle, randint
 from tmap.tree import Tree, Tleaf, TreeIterator
-from tmap.utils import isindex, which, factorial
+from tmap.utils import isindex, which, factorial, order
 
 class Permutation:
     """
@@ -93,10 +93,7 @@ class Permutation:
         """
         Deep copy of permutation.
         """
-
-        p = Permutation(len(self))
-        p.elements = self.elements.copy()
-        return p
+        return deepcopy(self)
 
     def __getitem__(self, i: int) -> int:
         return self.elements[i]
@@ -128,39 +125,12 @@ class Permutation:
         new_id = (self.id() + p.id()) % id_max
         return Permutation(len(self), new_id)
 
-    def shuffled(self):
+    def shuffle(self):
         """
         Shuffle permutation elements.
         """
-
-        ret = deepcopy(self)
-        shuffle(ret.elements)
-        return ret
-
-class PermutationIterator:
-    """
-    Iterator of all permutation of a set of nelements.
-    """
-
-    def __init__(self, n):
-        if isinstance(n, int):
-            permutation = Permutation(n)
-        elif isinstance(n, Permutation):
-            permutation = n
-        self.i = permutation.id()
-        self.len = len(permutation)
-        self.max = permutation.max_id
-
-    def __iter__(self):
+        shuffle(self.elements)
         return self
-
-    def __next__(self):
-        if self.i >= self.max:
-            raise StopIteration
-        perm = Permutation(self.len, self.i)
-        self.i += 1
-        return perm
-
 
 class TreePermutation(Permutation):
     """
@@ -175,86 +145,84 @@ class TreePermutation(Permutation):
         self.tree = tree_map
         n = TreeIterator(tree_map, lambda n: n.is_leaf()).count()
         super().__init__(n, id)
+        self._tag_()
+        
+    def _tag_(self):        
+        ## Tag leaves
+        i = 0
+        for n in TreeIterator(self.tree, lambda n: n.is_leaf()):
+            n.permutation_index = self.elements[i]
+            i+=1            
+        ## Tag Nodes
+        TreePermutation._tag_nodes_(self.tree)
+
+    @staticmethod
+    def _tag_nodes_(node):
+        """
+        Tag each node with the leaf having the smallest index.
+        """
+        node.permutation_index = TreePermutation._min_leaf_(node)
+        for n in node.children:
+            TreePermutation._tag_nodes_(n)
+            
+    @staticmethod
+    def _min_leaf_(node):
+        """
+        Get leaf index of minimum child leaf
+        """
+        if node.is_leaf():
+            return node.permutation_index
+        else:
+            return min([ TreePermutation._min_leaf_(n) for n in node.children ])
+
+    def shuffle(self):        
+        """
+        Return a new random permutation based on this permutation.
+        """
+        shuffle(self.elements)
+        self._tag_()
+        return self
 
     def canonical(self):
         """
-        Tag tree leaves with permutation elements, then sort permutation by
-        shifting tree nodes based on the smallest leaf.
-        return a new canonical TreePermutation.
-        """
+        Sort permutation by shifting tree nodes based on the smallest leaf.
+        Modifies this object in place.
+        """        
+        ## Sort every node  based on their permutation index.
+        for n in self.tree:
+            n.swap(order([ c.permutation_index for c in n.children ]))
 
-        ret = TreePermutation(self.tree)
-        i = 0
-        for l in TreeIterator(ret.tree, lambda n: n.is_leaf()):
-            l.tag = self.elements[i]
-            i += 1
-        # This is where leaf_indexes are reordered into canonical
-        # representation.
-        ret.tree.sort(by=lambda leaf: leaf.tag)
-        ret.elements = [
-            n.tag for n in TreeIterator(ret.tree, lambda n: n.is_leaf())
+        ## Edit permutation element according to leaves permutation index.
+        self.elements = [
+            n.permutation_index for n in TreeIterator(self.tree, lambda n: n.is_leaf())
         ]
-        return ret
+        return self
 
     def is_canonical(self) -> bool:
         """
         Return True if the permutation is already in a canonical form.
         """
-        return self.canonical() == self.elements
+        c = deepcopy(self)
+        c.canonical()
+        return c == self
 
-    def shuffled(self):
+    def shuffle_nodes(self):
         """
-        Return a new random canonical permutation based on this permutation.
+        Shuffle this permutation by shuffling tree nodes children.
+        Modifies this object in place.
         """
-
-        ret = TreePermutation(self.tree)
-        shuffle(ret.elements)
-        ret.elements = ret.canonical().elements
-        return ret
-
-    def shuffled_equivalent(self):
-        """
-        Return a new random, likely non canonical, permutation such that
-        the canonical versions of this permutation and new permutation are equal.
-        It is obtained by randomly shifting tree nodes.
-        """
-
-        ret = TreePermutation(self.tree)
-        ret.tree.tag_leaves()
-        for node in TreeIterator(ret.tree, lambda n: not n.is_leaf()):
+        for node in TreeIterator(self.tree, lambda n: not n.is_leaf()):
             ord = list(range(len(node.children)))
             shuffle(ord)
             node.swap(ord)
-        ret.elements = [
-            self.elements[i.tag]
-            for i in TreeIterator(ret.tree, lambda n: n.is_leaf())
+            
+        ## Edit permutation element according to leaves permutation index.
+        self.elements = [
+            n.permutation_index for n in TreeIterator(self.tree, lambda n: n.is_leaf())
         ]
-        return ret
-
-
-class CanonicalPermutationIterator:
-    """
-    Iterator of all canonical permutations of a set of nelements mapped 
-    with a tree.
-    """
-
-    def __init__(self, p: TreePermutation):
-        self.tree = p.tree
-        self.it = PermutationIterator(p)
-
-    def __iter__(self):
         return self
 
-    def __next__(self):
-        p = TreePermutation(self.tree, next(self.it).id())
-        while p != p.canonical():
-            p = TreePermutation(self.tree, next(self.it).id())
-        return p
-
-__all__ = [
-    'Permutation', 'TreePermutation', 'PermutationIterator',
-    'CanonicalPermutationIterator'
-]
+__all__ = [ 'Permutation', 'TreePermutation' ]
 
 ################################################################################
 # Testing                                                                      #
@@ -277,7 +245,7 @@ class TestPermutations(unittest.TestCase):
         for permutation in self.permutations:
             copy = permutation.copy()
             self.assertEqual(copy, permutation)
-            self.assertNotEqual(copy.shuffled(), permutation)
+            self.assertNotEqual(copy.shuffle(), permutation)
         
     def test_id(self):
         for id, permutation in zip(self.ids, self.permutations):
@@ -285,7 +253,7 @@ class TestPermutations(unittest.TestCase):
             self.assertEqual(id, permutation.id())
             # assert that shuffled permutation id will build the same
             # permutation 
-            shuffled = permutation.shuffled()
+            shuffled = permutation.copy().shuffle()
             permutation = Permutation(len(permutation), shuffled.id())
             self.assertEqual(shuffled, permutation)
 
@@ -294,13 +262,6 @@ class TestPermutations(unittest.TestCase):
             other = Permutation(len(permutation), randint(0, sys.maxsize))
             self.assertEqual((other + permutation).id(),
                              (permutation.id() + other.id()) % permutation.max_id)
-
-class TestPermutationIterator(unittest.TestCase):
-    def test_iterator(self):
-        size = 5
-        permutation = Permutation(size)
-        tot = sum([ 1 for i in PermutationIterator(permutation) ])
-        self.assertEqual(tot, permutation.max_id)
 
 class TestTreePermutation(unittest.TestCase):
     @classmethod
@@ -315,18 +276,14 @@ class TestTreePermutation(unittest.TestCase):
             arities.append([ randint(arity_min, arity_max) \
                              for i in range(randint(depth_min, depth_max)) ])
         trees = [ Tleaf(a) for a in arities ]
-        cls.permutations = [ TreePermutation(t).shuffled() for t in trees ]
+        cls.permutations = [ TreePermutation(t).shuffle() for t in trees ]
         
     def test_canonical(self):
         for permutation in self.permutations:
             canonical = permutation.canonical()
             self.assertTrue(canonical.is_canonical())
-            equivalent = permutation.shuffled_equivalent()            
+            equivalent = permutation.copy().shuffle_nodes()
             self.assertEqual(equivalent.canonical(), canonical)
 
-    def test_canonical_iterator(self):
-        it = CanonicalPermutationIterator(TreePermutation(Tleaf([2, 2])))
-        self.assertTrue(all([i.is_canonical() for i in it]))
-            
 if __name__ == '__main__':
     unittest.main()
