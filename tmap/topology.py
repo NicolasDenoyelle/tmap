@@ -61,19 +61,23 @@ class Topology(Tree):
         the structure.
         If no_io is True, io objects are filtered.
         """
-        
-        cmd = 'lstopo --of xml'
-        if input_topology is not None:
-            if os.path.isfile(os.path.expanduser(input_topology)):
-                cmd += ' --input {}'.format(input_topology)
-            else:
-                cmd += ' --input "{}"'.format(input_topology)
-        if structure:
-            cmd += ' --filter all:structure'
-        if no_io:
-            cmd += ' --no-io'
 
-        output = subprocess.getoutput(cmd)
+        if input_topology is not None and input_topology[-4:] == '.xml':
+            with open(input_topology) as f:
+                output = f.read()
+        else:
+            cmd = 'lstopo --of xml'
+            if input_topology is not None:
+                if os.path.isfile(os.path.expanduser(input_topology)):
+                    cmd += ' --input {}'.format(input_topology)
+                else:
+                    cmd += ' --input "{}"'.format(input_topology)
+                if structure:
+                    cmd += ' --filter all:structure'
+                if no_io:
+                    cmd += ' --no-io'
+                    
+            output = subprocess.getoutput(cmd)
         try:
             root = ElementTree.fromstring(output)
         except Exception as e:
