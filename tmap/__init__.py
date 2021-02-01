@@ -11,11 +11,14 @@ import subprocess
 
 from tmap import tree
 from tmap import permutation
-from tmap import topology
 
 __all__ = [ 'tree', 'permutation' ]
 
-if topology.hwloc_version is not None:
-    from tmap.topology import Topology, topology
-    __all__.append('Topology')
-    __all__.append('topology')
+try:
+    from tmap import hwloc_version
+    if hwloc_version is not None:
+        from tmap.topology import Topology, topology
+        __all__.append('Topology')
+        __all__.append('topology')
+except Exception:
+    pass
