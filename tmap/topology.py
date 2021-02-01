@@ -71,8 +71,14 @@ class Topology(Tree):
         if structure:
             cmd += ' --filter all:structure'
         if no_io:
-            cmd += ' --no-io'            
-        root = ElementTree.fromstring(subprocess.getoutput(cmd))
+            cmd += ' --no-io'
+
+        output = subprocess.getoutput(cmd)
+        try:
+            root = ElementTree.fromstring(output)
+        except Exception as e:
+            print("Invalid lstopo xml topology:\n{}".format(output))
+            raise e
 
         # Initialize root
         super().__init__(logical_index=0)
@@ -129,6 +135,7 @@ class Topology(Tree):
                 node.children = [node.children[0]]
         for node in nodes:
             node.apply(singlify_node)
+        return self
 
     def dup(self):
         return deepcopy(self)
