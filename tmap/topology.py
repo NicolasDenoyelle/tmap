@@ -133,12 +133,18 @@ class Topology(Tree):
         return next((TreeIterator(self, match)), None)
     
     def singlify(self, level = "Machine"):
-        nodes = [ n for n in self if hasattr(n, 'type') and n.type == level ]
-        def singlify_node(node):
-            if len(node.children) > 0:
-                node.children = [node.children[0]]
-        for node in nodes:
-            node.apply(singlify_node)
+        """
+        Restrict descendants of nodes with this type to a string of descendants 
+        down to a single PU.
+        """
+        if len(self.children) == 0:
+            return self
+        if hasattr(self, 'type') and self.type == level:
+            self.children = [ next(c for c in self.children if c.has_cpuset()) ]
+            self.children[0].singlify(level = self.children[0].type)
+        else:
+            for n in self.children:
+                n.singlify(level)
         return self
 
     def dup(self):
