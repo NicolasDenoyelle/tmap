@@ -33,6 +33,11 @@ class Tree:
         for k, v in kwargs.items():
             setattr(self, k, v)
 
+    def from_list(l, parent=None):
+        t = Tree(parent)
+        t.children = [ Tree.from_list(l[i], t) for i in range(len(l)) ]
+        return t
+
     def __repr__(self):
         return str(self.coords())
 
