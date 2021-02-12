@@ -152,22 +152,27 @@ class TreePermutation(Permutation):
     A Permutation mapped on a Tree where tree leaves are permutation elements.
     """
 
-    def __init__(self, tree_map: Tree, id=0):
+    def __init__(self, tree_map: Tree, *args, **kwargs):
         """
         Build a Permutation with as many elements as @tree_map leaves.
         if @id > 0, initialize permutation elements with a permutation of same id.
         """
         self.tree = tree_map
         n = TreeIterator(tree_map, lambda n: n.is_leaf()).count()
-        super().__init__(n, id)
+        if len(args) == 0 and len(kwargs.items()) == 0:
+            super().__init__(n)
+        else:
+            super().__init__(*args, **kwargs)
+        if len(self.elements) != n:
+            raise ValueError("Non matching number of tree leaves and permutations length.")
         self._tag_()
         
     def _tag_(self):        
         ## Tag leaves
-        i = 0
-        for n in TreeIterator(self.tree, lambda n: n.is_leaf()):
-            n.permutation_index = self.elements[i]
-            i+=1            
+        leaves = [ n for n in self.tree if n.is_leaf() ]
+        for i, e, n in zip(range(len(leaves)), self.elements, leaves):
+            n.permutation_index = e
+            n.leaf_index = i
         ## Tag Nodes
         TreePermutation._tag_nodes_(self.tree)
 
