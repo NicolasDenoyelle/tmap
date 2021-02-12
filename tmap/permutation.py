@@ -132,6 +132,21 @@ class Permutation:
         shuffle(self.elements)
         return self
 
+    def inverse(self):
+        """
+        Get the inverse permutation of this permutation.
+        """
+        ret = self.copy()
+        ret.elements = order(ret.elements)
+        return ret        
+
+    @staticmethod
+    def transform(src, dst):
+        """
+        Build a permutation that reorder src into dst.        
+        """
+        return Permutation([ next(i for (i,s) in zip(range(len(src)), src) if s == d) for d in dst ])
+
 class TreePermutation(Permutation):
     """
     A Permutation mapped on a Tree where tree leaves are permutation elements.

@@ -18,11 +18,11 @@ def which(l, cond):
     """
     return next((y[0] for y in zip(range(len(l)), l) if cond(y[1])), None)
 
-def order(l):
+def order(l, key=lambda x: x):
     """
     Get an index that would reorder list l.
     """
-    return [x[1] for x in sorted(zip(l, range(len(l))))]
+    return [x[1] for x in sorted(zip(l, range(len(l))), key=lambda x: key(x[0]))]
 
 def isindex(l):
     """
@@ -31,9 +31,10 @@ def isindex(l):
     return next((False for i in range(len(l)) if i not in l), True)
 
 def factorial(n):
-    """
-    Dumb recursive factorial computation
-    """
-    return reduce(lambda x, y: x*y, range(1, n+1))
-
+    r = 1
+    while n > 1:
+        r = r * n
+        n = n - 1
+    return r
+    
 __all__ = [ 'unlist', 'argmin', 'which', 'order', 'isindex', 'factorial' ]
