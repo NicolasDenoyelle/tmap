@@ -33,9 +33,16 @@ class Tree:
         for k, v in kwargs.items():
             setattr(self, k, v)
 
-    def from_list(l, parent=None):
-        t = Tree(parent)
-        t.children = [ Tree.from_list(l[i], t) for i in range(len(l)) ]
+    def from_list(l):
+        t = Tree()
+        if isinstance(l, list):
+            kids = [ Tree.from_list(x) for x in l ]
+        elif isinstance(l, int):
+            kids = [ Tree() for i in range(l) ]
+        else:
+            kids = [ Tree(attr=l) ]
+        if len(kids) > 0:
+            t.connect_children(kids)
         return t
 
     def __repr__(self):
@@ -65,6 +72,9 @@ class Tree:
         Iterate the tree as per TreeIterator walk.
         """
         return TreeIterator(self)
+
+    def is_equal(self, other):
+        return next((False for a,b in zip(iter(self), iter(other)) if a.arity() != b.arity()), True)
 
     def connect_children(self, *args):
         """
@@ -152,16 +162,13 @@ class Tree:
             return []
         return self.parent.coords() + [which(self.parent.children, lambda x: x==self)]
 
-    def swap(self, order: list):
+    def swap(self, index: list):
         """
-        Reorder children of this node.
-        The function checks that the provided index is suitable for the operation.
+        Reorder a subset children of this node.
         """
-        
-        if len(order) != len(self.children) or not isindex(order):
-            raise ValueError(
-                'swap order of Tree children must contain complete index')
-        self.children = [self.children[i] for i in order]
+        children = [ self.children[i] for i in index ]
+        for c, i in zip(children, sorted(index)):
+            self.children[i] = c
 
     def index(self):
         """

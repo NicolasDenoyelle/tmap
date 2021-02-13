@@ -10,6 +10,7 @@
 import sys
 from copy import deepcopy
 from random import shuffle, randint
+from functools import reduce
 from tmap.tree import Tree, Tleaf, TreeIterator
 from tmap.utils import isindex, which, factorial, order
 
@@ -150,8 +151,7 @@ class Permutation:
 class TreePermutation(Permutation):
     """
     A Permutation mapped on a Tree where tree leaves are permutation elements.
-    """
-
+    """            
     def __init__(self, tree_map: Tree, *args, **kwargs):
         """
         Build a Permutation with as many elements as @tree_map leaves.
@@ -172,7 +172,7 @@ class TreePermutation(Permutation):
         leaves = [ n for n in self.tree if n.is_leaf() ]
         for i, e, n in zip(range(len(leaves)), self.elements, leaves):
             n.permutation_index = e
-            n.leaf_index = i
+            
         ## Tag Nodes
         TreePermutation._tag_nodes_(self.tree)
 
@@ -181,19 +181,15 @@ class TreePermutation(Permutation):
         """
         Tag each node with the leaf having the smallest index.
         """
-        node.permutation_index = TreePermutation._min_leaf_(node)
         for n in node.children:
-            TreePermutation._tag_nodes_(n)
-            
-    @staticmethod
-    def _min_leaf_(node):
-        """
-        Get leaf index of minimum child leaf
-        """
-        if node.is_leaf():
-            return node.permutation_index
-        else:
-            return min([ TreePermutation._min_leaf_(n) for n in node.children ])
+            if not hasattr(n, 'permutation_index'):
+                TreePermutation._tag_nodes_(n)
+        node.permutation_index = min([ n.permutation_index for n in node.children ])
+        groups = []
+        for n in node.children:
+            if not any([ n.is_equal(x) for x in groups ]):
+                groups.append(n)
+        node.grouped_children = [ [ i for (i,c) in zip(range(len(node.children)), node.children) if c.is_equal(n) ] for n in groups ]
 
     def shuffle(self):        
         """
@@ -203,19 +199,23 @@ class TreePermutation(Permutation):
         self._tag_()
         return self
 
+    def _update_elements_(self):
+        self.elements = [ n.permutation_index for n in self.tree if n.is_leaf() ]
+        
     def canonical(self):
         """
         Sort permutation by shifting tree nodes based on the smallest leaf.
         Modifies this object in place.
         """        
-        ## Sort every node  based on their permutation index.
+        ## Sort every node based on their permutation index.
         for n in self.tree:
-            n.swap(order([ c.permutation_index for c in n.children ]))
-
-        ## Edit permutation element according to leaves permutation index.
-        self.elements = [
-            n.permutation_index for n in TreeIterator(self.tree, lambda n: n.is_leaf())
-        ]
+            if n.is_leaf():
+                continue
+            for g in n.grouped_children:
+                srted = sorted([(n.children[i],i) for i in g],
+                               key=lambda x: x[0].permutation_index)
+                n.swap([ s[1] for s in srted ])
+        self._update_elements_()
         return self
 
     def is_canonical(self) -> bool:
@@ -229,17 +229,15 @@ class TreePermutation(Permutation):
     def shuffle_nodes(self):
         """
         Shuffle this permutation by shuffling tree nodes children.
+        Only children with the same amount of leaves can be shuffled
+        together.
         Modifies this object in place.
         """
         for node in TreeIterator(self.tree, lambda n: not n.is_leaf()):
-            ord = list(range(len(node.children)))
-            shuffle(ord)
-            node.swap(ord)
-            
-        ## Edit permutation element according to leaves permutation index.
-        self.elements = [
-            n.permutation_index for n in TreeIterator(self.tree, lambda n: n.is_leaf())
-        ]
+            for g in node.grouped_children:
+                shuffle(g)
+                node.swap(g)
+        self._update_elements_()
         return self
 
 __all__ = [ 'Permutation', 'TreePermutation' ]
