@@ -222,9 +222,11 @@ class TreePermutation(Permutation):
         """
         Return True if the permutation is already in a canonical form.
         """
-        c = deepcopy(self)
-        c.canonical()
-        return c == self
+        for n in self.tree:
+            for i, j in zip(n.children[1:], n.children):
+                if i.permutation_index < j.permutation_index:
+                    return False
+        return True
 
     def shuffle_nodes(self):
         """
