@@ -167,7 +167,7 @@ class Tree:
         Reorder a subset children of this node.
         """
         children = [ self.children[i] for i in index ]
-        for c, i in zip(children, sorted(index)):
+        for c, i in zip([ self.children[i] for i in index ], sorted(index)):
             self.children[i] = c
 
     def index(self):

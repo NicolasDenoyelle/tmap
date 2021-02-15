@@ -169,10 +169,8 @@ class TreePermutation(Permutation):
         
     def _tag_(self):        
         ## Tag leaves
-        leaves = [ n for n in self.tree if n.is_leaf() ]
-        for i, e, n in zip(range(len(leaves)), self.elements, leaves):
+        for e, n in zip(self.elements, TreeIterator(self.tree, Tree.is_leaf)):
             n.permutation_index = e
-            
         ## Tag Nodes
         TreePermutation._tag_nodes_(self.tree)
 
@@ -181,15 +179,17 @@ class TreePermutation(Permutation):
         """
         Tag each node with the leaf having the smallest index.
         """
+        if node.is_leaf():
+            return
         for n in node.children:
-            if not hasattr(n, 'permutation_index'):
-                TreePermutation._tag_nodes_(n)
+            TreePermutation._tag_nodes_(n)
+            
         node.permutation_index = min([ n.permutation_index for n in node.children ])
-        groups = []
+        subtrees = []
         for n in node.children:
-            if not any([ n.is_equal(x) for x in groups ]):
-                groups.append(n)
-        node.grouped_children = [ [ i for (i,c) in zip(range(len(node.children)), node.children) if c.is_equal(n) ] for n in groups ]
+            if not any([ n.is_equal(t) for t in subtrees ]):
+                subtrees.append(n)
+        node.grouped_children = [ [ i for (i,c) in zip(range(len(node.children)), node.children) if c.is_equal(t) ] for t in subtrees ]
 
     def shuffle(self):        
         """
@@ -208,12 +208,11 @@ class TreePermutation(Permutation):
         Modifies this object in place.
         """        
         ## Sort every node based on their permutation index.
-        for n in self.tree:
-            if n.is_leaf():
-                continue
+        nodes = [ n for n in self.tree if hasattr(n, 'grouped_children') ]
+        for n in nodes:
+            assert(all(i in range(n.arity()) for i in reduce(lambda a,b: a+b, n.grouped_children, [])))
             for g in n.grouped_children:
-                srted = sorted([(n.children[i],i) for i in g],
-                               key=lambda x: x[0].permutation_index)
+                srted = sorted([(n.children[i].permutation_index,i) for i in g])
                 n.swap([ s[1] for s in srted ])
         self._update_elements_()
         return self
@@ -223,9 +222,16 @@ class TreePermutation(Permutation):
         Return True if the permutation is already in a canonical form.
         """
         for n in self.tree:
-            for i, j in zip(n.children[1:], n.children):
-                if i.permutation_index < j.permutation_index:
-                    return False
+            if not hasattr(n, 'grouped_children'):
+                continue
+            # Check that each individual group is ordered
+            for group in n.grouped_children:
+                group = [ n.children[i] for i in group ]
+                index = [ c.permutation_index for c in n.children if c in group ]
+                for i, j in zip(index[1:], index):
+                    if i < j:
+                        print(index)
+                        return False
         return True
 
     def shuffle_nodes(self):

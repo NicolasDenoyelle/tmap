@@ -14,6 +14,7 @@ import subprocess
 import re
 import os
 from copy import deepcopy
+from tmap.utils import which
 
 hwloc_version=None
 s, out = subprocess.getstatusoutput('hwloc-info --version')
@@ -145,6 +146,18 @@ class Topology(Tree):
         else:
             for n in self.children:
                 n.singlify(level)
+        return self
+
+    def flatten(self):
+        """
+        Cut nodes between root and leaves with an arity of 1.
+        """
+        e = next((n for n in self if n.arity()==1 and n.parent is not None), None)
+        while e is not None:
+            i = which(e.parent.children, lambda x: x == e)
+            e.parent.children[i] = e.children[0]
+            e.children[0].parent = e.parent
+            e = next((n for n in self if n.arity()==1 and n.parent is not None), None)
         return self
 
     def dup(self):
