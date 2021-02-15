@@ -210,7 +210,6 @@ class TreePermutation(Permutation):
         ## Sort every node based on their permutation index.
         nodes = [ n for n in self.tree if hasattr(n, 'grouped_children') ]
         for n in nodes:
-            assert(all(i in range(n.arity()) for i in reduce(lambda a,b: a+b, n.grouped_children, [])))
             for g in n.grouped_children:
                 srted = sorted([(n.children[i].permutation_index,i) for i in g])
                 n.swap([ s[1] for s in srted ])
@@ -230,7 +229,6 @@ class TreePermutation(Permutation):
                 index = [ c.permutation_index for c in n.children if c in group ]
                 for i, j in zip(index[1:], index):
                     if i < j:
-                        print(index)
                         return False
         return True
 
