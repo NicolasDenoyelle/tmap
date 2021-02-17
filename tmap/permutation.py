@@ -249,12 +249,12 @@ class TreePermutation(Permutation):
         +   +    +   +
         0   1    2   3
         """
+        leaves = [ n for n in self.tree if n.is_leaf() ]
+        item_size = max([ len(str(l.permutation_index)) for l in leaves ])
         if display_tree:
-            leaves = [ n for n in self.tree if n.is_leaf() ]
-            sizes = [ len(str(l.permutation_index)) for l in leaves ]
             lengths = {}
-            for i, l in zip(range(len(sizes)), leaves):
-                off = i*2 + sum(sizes[:i])
+            for i, l in zip(range(len(leaves)), leaves):
+                off = (2 + item_size) * i
                 coords = TreePermutation.Coords(l.coords())
                 lengths[coords] = off
                 while len(coords) > 0 and coords[-1] == 0:
@@ -277,12 +277,13 @@ class TreePermutation(Permutation):
                     else:
                         i_line += '-' * (offset - len(i_line))
                     s_line += ' ' * (offset - len(s_line))
-                    i_line += str(n.permutation_index)
-                    s_line += '|' + ' ' * (len(str(n.permutation_index))-1)
+                    i_line += '{0:<{1}d}'.format(n.permutation_index, item_size)
+                    s_line += '|' + ' ' * (item_size - 1)
                 print(i_line)
                 if i < depth:
                     print(s_line)
-        print('  '.join([str(i) for i in self.elements]))
+        
+        print('  '.join(['{0:<{1}d}'.format(i, item_size) for i in self.elements]))
         
     def shuffle_nodes(self):
         """
