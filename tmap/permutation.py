@@ -232,6 +232,58 @@ class TreePermutation(Permutation):
                         return False
         return True
 
+    class Coords(list):
+        def __hash__(self):
+            if len(self) == 0:
+                return -1
+            return sum([ self[i] * (len(self) ** i) for i in range(len(self)) ])
+            
+    def print(self, display_tree=True):
+        """
+        +
+        |
+        +--------+
+        |        |
+        +---+    +---+
+        |   |    |   |
+        +   +    +   +
+        0   1    2   3
+        """
+        if display_tree:
+            leaves = [ n for n in self.tree if n.is_leaf() ]
+            sizes = [ len(str(l.permutation_index)) for l in leaves ]
+            lengths = {}
+            for i, l in zip(range(len(sizes)), leaves):
+                off = i*2 + sum(sizes[:i])
+                coords = TreePermutation.Coords(l.coords())
+                lengths[coords] = off
+                while len(coords) > 0 and coords[-1] == 0:
+                    coords = TreePermutation.Coords(coords[:-1])
+                    lengths[coords] = off
+                if len(coords) == 0:
+                    lengths[coords] = off
+
+            depth = self.tree.max_depth()
+            for i in range(depth+1):
+                i_line = ''
+                s_line = ''
+                for n in self.tree:
+                    if n.get_depth() != i:
+                        continue
+                    coords = TreePermutation.Coords(n.coords())
+                    offset = lengths[coords]
+                    if len(coords) > 0 and coords[-1] == 0:
+                        i_line += ' ' * (offset - len(i_line))
+                    else:
+                        i_line += '-' * (offset - len(i_line))
+                    s_line += ' ' * (offset - len(s_line))
+                    i_line += str(n.permutation_index)
+                    s_line += '|' + ' ' * (len(str(n.permutation_index))-1)
+                print(i_line)
+                if i < depth:
+                    print(s_line)
+        print('  '.join([str(i) for i in self.elements]))
+        
     def shuffle_nodes(self):
         """
         Shuffle this permutation by shuffling tree nodes children.
