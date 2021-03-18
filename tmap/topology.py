@@ -15,6 +15,7 @@ import re
 import os
 from copy import deepcopy
 from tmap.utils import which
+from socket import gethostname
 
 hwloc_version=None
 s, out = subprocess.getstatusoutput('hwloc-info --version')
@@ -34,6 +35,7 @@ class Topology(Tree):
             node = Tree()
         node.tag = xml_node.tag
         node.attrib = xml_node.attrib
+        node.hostname = gethostname()
         for k,v in xml_node.attrib.items():
             # Don't override attributes
             if k in node.__dict__.keys():
@@ -122,6 +124,14 @@ class Topology(Tree):
             
         ## If no child has cpuset, then this has no cpuset.
         return next((True for c in self.children if c.has_cpuset()), False)
+
+    def set_hostname(self, hostname):
+        """
+        Set attribute hostname of topology nodes to the `hostname` value.
+        """
+        self.hostname = hostname
+        for n in self:
+            n.hostname = hostname
 
     def get_nbobjs_by_type(self, type: str):
         return len(self.select(lambda n: hasattr(self, 'type') and n.type == type))
