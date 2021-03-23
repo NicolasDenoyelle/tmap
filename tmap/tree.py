@@ -400,13 +400,17 @@ class Tleaf(Tree):
     A Tleaf is a tree where all nodes at same depth have the same arity.
     """
 
-    def __init__(self, arities):
+    def __init__(self, arities, *args):
         """
         Tleaf constructor.
-        @arities: a list of arity per level above leaves. (Does not include the last [1])
+        @arities: a list of arity per level above leaves.
+        @arities can also be one level followed by @*args other levels.
         """
         
         super().__init__()
+
+        if isinstance(arities, int):
+            arities = [ arities ] + list(args)
         if len(arities) > 1:
             self.connect_children(
                 [Tleaf(arities[1:]) for i in range(arities[0])])
