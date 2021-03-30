@@ -29,7 +29,11 @@ class Tree:
         """
 
         self.parent = parent
+        if parent is not None:
+            parent.children.append(self)
         self.children = [] if children is None else children
+        for c in self.children:
+            c.parent = self            
         for k, v in kwargs.items():
             setattr(self, k, v)
 

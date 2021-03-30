@@ -169,6 +169,33 @@ class Topology(Tree):
             e = next((n for n in self if n.arity()==1), None)
         return self
 
+    def split(self, n=2):
+        """
+        Split a node into several nodes, adding a level to the tree.
+        """
+        if len(self.children) % n != 0:
+            raise ValueError('Level {} can only be split into a divisor of its arity ({})'.format(repr(self), len(self.children)))
+        num = len(self.children) // n
+        children = [ self.children[i:i+num] for i in range(0, len(self.children), num) ]
+        self.children = []
+        children = [ Tree(self, c) for c in children ]
+        return self
+
+    def split_type(self, level_type, n=2):
+        """
+        Split all node of given type when possible.
+        """
+        nodes = list(TreeIterator(self,
+                                  lambda node: hasattr(node, 'type') and \
+                                  node.type == level_type))
+        for node in nodes:
+            try:
+                node.split(n)
+            except ValueError:
+                print("Node {} could not be split in {}".format(repr(node), n))
+                pass
+        return self
+
     def remove_depth(self, depth):
         """
         Remove all nodes at depth depth and connect their children to their
