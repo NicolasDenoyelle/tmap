@@ -16,6 +16,7 @@ import os
 from copy import deepcopy
 from tmap.utils import which
 from socket import gethostname
+from functools import reduce
 
 hwloc_version=None
 s, out = subprocess.getstatusoutput('hwloc-info --version')
@@ -162,12 +163,26 @@ class Topology(Tree):
         """
         Cut nodes between root and leaves with an arity of 1.
         """
-        e = next((n for n in self if n.arity()==1 and n.parent is not None), None)
+        e = next((n for n in self if n.arity()==1), None)
         while e is not None:
-            i = which(e.parent.children, lambda x: x == e)
-            e.parent.children[i] = e.children[0]
-            e.children[0].parent = e.parent
-            e = next((n for n in self if n.arity()==1 and n.parent is not None), None)
+            e.remove_depth(1)
+            e = next((n for n in self if n.arity()==1), None)
+        return self
+
+    def remove_depth(self, depth):
+        """
+        Remove all nodes at depth depth and connect their children to their
+        parent.
+        """
+        depth += self.get_depth()
+        if depth <= 0:
+            return self
+        parents = [ n for n in self if n.get_depth() == depth-1 ]
+        for p in parents:
+            children = reduce(lambda x, y: x+y, [ c.children for c in p.children ], [])
+            p.children = []
+            p.connect_children(children)
+            p.PUs = reduce(lambda x, y: x+y, [ c.PUs for c in children ], [])
         return self
 
     def dup(self):
