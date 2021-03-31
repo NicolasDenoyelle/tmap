@@ -242,6 +242,18 @@ class Tree:
             return self
         return self.children[0].first_leaf()
 
+    def remove(self):
+        """
+        Remove a node from the tree and connect its children instead of itself 
+        to the parent.
+        """
+        if self.parent is not None:
+            self.parent.children = [ n for n in self.parent.children if n != self ]
+            self.parent.children += self.children
+        for c in self.children:
+            c.parent = self.parent
+        return self
+    
     def prune(self, cond=lambda n: True):
         """
         Prune a node and/or its children from a tree.

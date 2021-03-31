@@ -107,10 +107,7 @@ class Topology(Tree):
 
         # Set list of child PUs:
         for n in self:
-            n.PUs = []
-            for PU in n:
-                if PU.is_leaf():
-                    n.PUs.append(PU)
+            n.PUs = [ i for i in n if hasattr(i, 'type') and i.type == 'PU' ]
 
     def __repr__(self):
         if hasattr(self, 'type'):
@@ -152,8 +149,14 @@ class Topology(Tree):
         if len(self.children) == 0:
             return self
         if hasattr(self, 'type') and self.type == level:
-            self.children = [ next(c for c in self.children if c.has_cpuset()) ]
-            self.children[0].singlify(level = self.children[0].type)
+            child = next(c for c in self.children if c.has_cpuset())
+            child.singlify(level = child.type)
+            self.children = [ child ]
+            self.PUs = child.PUs
+            p = self.parent
+            while p is not None:
+                p.PUs = reduce(lambda x, y: x+y, [c.PUs for c in p.children], [])
+                p = p.parent
         else:
             for n in self.children:
                 n.singlify(level)
@@ -165,7 +168,7 @@ class Topology(Tree):
         """
         e = next((n for n in self if n.arity()==1), None)
         while e is not None:
-            e.remove_depth(1)
+            e.remove()
             e = next((n for n in self if n.arity()==1), None)
         return self
 
@@ -204,12 +207,10 @@ class Topology(Tree):
         depth += self.get_depth()
         if depth <= 0:
             return self
-        parents = [ n for n in self if n.get_depth() == depth-1 ]
-        for p in parents:
-            children = reduce(lambda x, y: x+y, [ c.children for c in p.children ], [])
-            p.children = []
-            p.connect_children(children)
-            p.PUs = reduce(lambda x, y: x+y, [ c.PUs for c in children ], [])
+        root = self.root()
+        nodes = [ n for n in root if n.get_depth() == depth ]
+        for n in nodes:            
+            n.remove()
         return self
 
     def dup(self):
