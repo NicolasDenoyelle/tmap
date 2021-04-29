@@ -253,6 +253,20 @@ class Tree:
         for c in self.children:
             c.parent = self.parent
         return self
+
+    def remove_depth(self, depth):
+        """
+        Remove all nodes at depth depth and connect their children to their
+        parent.
+        """
+        depth += self.get_depth()
+        if depth <= 0:
+            return self
+        root = self.root()
+        nodes = [ n for n in root if n.get_depth() == depth ]
+        for n in nodes:            
+            n.remove()
+        return self
     
     def prune(self, cond=lambda n: True):
         """
